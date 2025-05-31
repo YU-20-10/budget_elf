@@ -1,0 +1,109 @@
+"use client";
+
+import { createContext, useState, useEffect, ReactNode, useRef } from "react";
+
+import {
+  getAllAccountBook,
+  watchAllAccountBook,
+  getUserAbleAccountBookIdArr,
+  getUserAbleAccountBook,
+} from "@/lib/firebase/firestore";
+import useAuth from "@/hooks/useAuth";
+import {
+  AccountingBookType,
+  AccountBookContextType,
+  AccountingRecordWithIdType,
+} from "@/types/AccountingBookType";
+
+export const AccountBookContext = createContext<
+  AccountBookContextType | undefined
+>(undefined);
+
+export function AccountBookProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading, invitesData } = useAuth();
+  // 帳簿
+  const [ownAccountBook, setOwnAccountBook] = useState<AccountingBookType[]>(
+    []
+  );
+  const [sharedAccountBook, setSharedAccountBook] = useState<
+    AccountingBookType[]
+  >([]);
+  const [allAccountBook, setAllAccountBook] = useState<AccountingBookType[]>(
+    []
+  );
+  const accountBookRef = useRef<AccountingBookType[] | null>(null);
+  const [selectedAccountingBook, setSelectedAccountingBook] = useState<
+    AccountingBookType | undefined
+  >(undefined);
+  // 記帳資料
+  const [selectedBookRecord, setSelectedBookRecord] = useState<
+    AccountingRecordWithIdType[] | undefined
+  >(undefined);
+  useEffect(() => {
+    if (!user?.uid || authLoading) return;
+
+    const id = user?.uid;
+    let unsubscribe: () => void;
+
+    if (accountBookRef.current !== null) {
+      setOwnAccountBook(accountBookRef.current);
+      // setAllAccountBook(accountBookRef.current);
+    } else {
+      // 取得一次資料
+      (async () => {
+        try {
+          if (id) {
+            const allAccountBook = await getAllAccountBook(id);
+            accountBookRef.current = allAccountBook;
+            // setAllAccountBook(allAccountBook);
+            setOwnAccountBook(allAccountBook);
+          }
+        } catch (error) {
+          console.log("遠端取資料失敗", error);
+        }
+      })();
+    }
+
+    // 啟動監聽
+    if (id) {
+      unsubscribe = watchAllAccountBook(id, (books) => {
+        accountBookRef.current = books;
+        setOwnAccountBook(books);
+        // setAllAccountBook(books);
+      });
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user, authLoading]);
+  useEffect(() => {
+    const id = user?.uid;
+    if (id) {
+      (async () => {
+        const allAbleAccountBookArr = await getUserAbleAccountBookIdArr(id);
+        const ableAccountBooks = await getUserAbleAccountBook(
+          allAbleAccountBookArr
+        );
+        setSharedAccountBook(ableAccountBooks);
+        console.log(ableAccountBooks);
+      })();
+    }
+  }, [user?.uid, invitesData]);
+  useEffect(() => {
+    setAllAccountBook([...ownAccountBook, ...sharedAccountBook]);
+  }, [ownAccountBook, sharedAccountBook]);
+  return (
+    <AccountBookContext.Provider
+      value={{
+        allAccountBook,
+        selectedAccountingBook,
+        setSelectedAccountingBook,
+        selectedBookRecord,
+        setSelectedBookRecord,
+      }}
+    >
+      {children}
+    </AccountBookContext.Provider>
+  );
+}
