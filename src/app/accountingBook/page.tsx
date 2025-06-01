@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, ReactNode } from "react";
 import Image from "next/image";
 import {
   Popover,
@@ -50,6 +50,7 @@ export default function AccountingBook() {
   >(userData?.name);
   const [settingThisNameIsOpen, setSettingThisNameIsOpen] =
     useState<boolean>(false);
+  const [accountBookList, setAccountBookList] = useState<ReactNode>(<></>);
 
   async function shareBtnClickHandler() {
     console.log(uidInput);
@@ -119,14 +120,18 @@ export default function AccountingBook() {
       }
     }
   }
-  async function acceptInvitationClickHandler() {
-    console.log(activeInvites?.invitesId);
-    console.log(userData?.user?.uid);
-    if (activeInvites?.invitesId && userData?.user?.uid) {
-      await updateAccountBookInvites(activeInvites?.invitesId, "accepted");
+  async function acceptInvitationClickHandler(
+    event: React.MouseEvent<HTMLButtonElement>
+  ) {
+    const invitesId = event.currentTarget.dataset.inviteid;
+    const accountingBookId = event.currentTarget.dataset.accountingbookid;
+    const uid = userData?.user?.uid;
+    console.log(invitesId, accountingBookId, uid);
+    if (invitesId && accountingBookId && uid) {
+      await updateAccountBookInvites(invitesId, "accepted");
       const setUserAbleAccountBookResult = await setUserAbleAccountBook(
-        activeInvites.accountingBookId,
-        userData?.user?.uid
+        accountingBookId,
+        uid
       );
 
       if (setUserAbleAccountBookResult) {
@@ -300,6 +305,89 @@ export default function AccountingBook() {
     </>
   );
 
+  useEffect(() => {
+    setAccountBookList(
+      <>
+        {allAccountBook.map((book) => {
+          return (
+            <tr key={book.id}>
+              <td
+                scope="row"
+                className="text-center border-b border-primary p-2"
+              >
+                {book.bookName}
+              </td>
+              {userData.user?.uid === book.bookOwnerUid ? (
+                <>
+                  <td className="border-b border-primary p-2 text-center">
+                    <button
+                      className="p-2 cursor-pointer"
+                      onClick={() => {
+                        setActiveBook(book);
+                        setSharDialogIsOpen(true);
+                      }}
+                    >
+                      <Image
+                        src="/icon/person_add_dark_icon.svg"
+                        alt="edit icon"
+                        width={24}
+                        height={24}
+                      ></Image>
+                    </button>
+                  </td>
+                  <td className="border-b border-primary p-2 text-center">
+                    <button
+                      className="p-2 cursor-pointer"
+                      onClick={() => {
+                        setActiveBook(book);
+                        setEditDialogIsOpen(true);
+                      }}
+                    >
+                      <Image
+                        src="/icon/edit_dark_icon.svg"
+                        alt="edit icon"
+                        width={24}
+                        height={24}
+                      ></Image>
+                    </button>
+                  </td>
+                </>
+              ) : (
+                <>
+                  <td className="border-b border-primary p-2 text-center">
+                    <button className="p-2" disabled>
+                      <Image
+                        src="/icon/person_add_disabled_dark_icon.svg"
+                        alt="edit icon"
+                        width={24}
+                        height={24}
+                      ></Image>
+                    </button>
+                  </td>
+                  <td className="border-b border-primary p-2 text-center">
+                    <button
+                      className="p-2 cursor-pointer"
+                      onClick={() => {
+                        setActiveBook(book);
+                        setEditDialogIsOpen(true);
+                      }}
+                    >
+                      <Image
+                        src="/icon/edit_dark_icon.svg"
+                        alt="edit icon"
+                        width={24}
+                        height={24}
+                      ></Image>
+                    </button>
+                  </td>
+                </>
+              )}
+            </tr>
+          );
+        })}
+      </>
+    );
+  }, [allAccountBook, userData?.user?.uid]);
   return (
     <main className="flex flex-col items-center p-6 lg:h-[calc(100vh-100px)] mb-25 lg:mb-0 overflow-hidden">
       <div className="container grow flex flex-col">
@@ -333,7 +421,7 @@ export default function AccountingBook() {
               </tr>
             </thead>
             <tbody>
-              {allAccountBook.map((book) => {
+              {/* {allAccountBook.map((book) => {
                 return (
                   <tr key={book.id}>
                     <td
@@ -409,7 +497,8 @@ export default function AccountingBook() {
                     )}
                   </tr>
                 );
-              })}
+              })} */}
+              {accountBookList}
             </tbody>
           </table>
         </div>
@@ -466,9 +555,12 @@ export default function AccountingBook() {
                     <td className="border-b border-primary p-2 text-center">
                       <button
                         className="p-2 border bg-secondary text-white rounded-xl"
-                        onClick={() => {
+                        data-inviteid={invites.invitesId}
+                        data-accountingbookid={invites.accountingBookId}
+                        onClick={(event) => {
                           setActiveInvites(invites);
-                          acceptInvitationClickHandler();
+                          console.log(activeInvites);
+                          acceptInvitationClickHandler(event);
                         }}
                       >
                         接受邀請

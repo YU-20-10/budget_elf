@@ -13,6 +13,9 @@ import {
   orderBy,
   updateDoc,
   arrayUnion,
+  DocumentReference,
+  DocumentSnapshot,
+  // documentId,
   // runTransaction,
 } from "firebase/firestore";
 
@@ -27,12 +30,16 @@ import {
   UserAbleAccountBookType,
   accountBookInvitesType,
 } from "@/types/AccountingBookType";
+import { FirebaseError } from "firebase/app";
 
-// type AccountBookRuleMemberType = {
-//   uid: string;
-//   role: string;
-//   sharePermission: boolean;
-// };
+// 分割陣列為小陣列
+// function chunkArr<T>(array: T[], size: number) {
+//   const result: T[][] = [];
+//   for (let i = 0; i < array.length; i += size) {
+//     result.push(array.slice(i, i + size));
+//   }
+//   return result;
+// }
 
 // 新增使用者資料
 export async function setUserData(uid: string, name: string, email: string) {
@@ -348,6 +355,35 @@ export async function getUserAbleAccountBookIdArr(uid: string) {
   return allAbleAccountBookArr;
 }
 
+// 若遇到資料建立時間差導致無法取得資料，進行retry，至多2次
+async function getDocWithRetry(
+  ref: DocumentReference,
+  retry: number = 2,
+  delay: number = 200
+): Promise<DocumentSnapshot | null> {
+  for (let i = 0; i <= retry; i++) {
+    try {
+      const snap = await getDoc(ref);
+      if (snap.exists()) return snap;
+      return null; // 不存在的資料不 retry
+    } catch (err: unknown) {
+      if (err instanceof FirebaseError) {
+        if (err.code === "permission-denied") {
+          console.log(`權限錯誤，第${i + 1}次重試...`);
+          await new Promise((res) => setTimeout(res, delay));
+        } else {
+          console.error("Firebase 錯誤：", err);
+          break; // 不是權限問題就不要 retry
+        }
+      } else {
+        console.error("非 Firebase 錯誤：", err);
+        break;
+      }
+    }
+  }
+  return null;
+}
+
 // 取得被共用的可讀取帳簿
 export async function getUserAbleAccountBook(
   ableBookArr: UserAbleAccountBookType[]
@@ -356,10 +392,20 @@ export async function getUserAbleAccountBook(
     doc(firestore, "accountingBooks", ableBook.accountingBookId)
   );
   const ableBookSnapShots = await Promise.all(
-    ableBookRefs.map((ref) => getDoc(ref))
+    // ableBookRefs.map((ref) => getDoc(ref))
+    ableBookRefs.map((ref) => getDocWithRetry(ref))
   );
+  // const allAbleBook = ableBookSnapShots
+  //   .filter((docSnap) => docSnap.exists)
+  //   .map((docSnap) => ({
+  //     id: docSnap.id,
+  //     ...(docSnap.data() as Omit<AccountingBookType, "id">),
+  //   }));
   const allAbleBook = ableBookSnapShots
-    .filter((docSnap) => docSnap.exists)
+    .filter(
+      (docSnap): docSnap is DocumentSnapshot =>
+        docSnap !== null && docSnap.exists()
+    )
     .map((docSnap) => ({
       id: docSnap.id,
       ...(docSnap.data() as Omit<AccountingBookType, "id">),
@@ -368,13 +414,53 @@ export async function getUserAbleAccountBook(
 }
 
 // 監聽可共用帳簿是否更新，如果更新返回新的資料
-// export async function watchUserAbleAccountBook(
-//   uid: string,
-//   callbackFn: (ableAccountBooks: AccountingBookType[]) => void
-// ) {
-  
-  
-// }
+export function watchUserAbleAccountBook(
+  uid: string,
+  // callbackFn: (ableAccountBooks: AccountingBookType[]) => void
+  callbackFn: (ableAccountBookIdArr: UserAbleAccountBookType[]) => void
+) {
+  const ableBookRef = collection(
+    firestore,
+    "userAbleAccountBooks",
+    uid,
+    "ableAccountBooks"
+  );
+  const unsubscribe = onSnapshot(ableBookRef, async (snapshot) => {
+    const ableBookIdArr = snapshot.docs.map(
+      (doc) => doc.data() as UserAbleAccountBookType
+    );
+    if (ableBookIdArr.length < 0) {
+      callbackFn([]);
+    } else {
+      callbackFn(ableBookIdArr);
+    }
+    // if (ableBookIdArr.length < 0) {
+    //   callbackFn([]);
+    //   return;
+    // }
+    // console.log(ableBookIdArr);
+    // Firestore 限制 where(..., "in", [...])最多只能10筆
+    // const newAbleBookArr = chunkArr(ableBookIdArr, 10);
+    // const allAbleBook: AccountingBookType[] = [];
+    // for (const bookArr of newAbleBookArr) {
+    //   const q = query(
+    //     collection(firestore, "accountingBooks"),
+    //     where(documentId(), "in", bookArr)
+    //   );
+    //   const snap = await getDocs(q);
+    //   snap.forEach((doc) => {
+    //     allAbleBook.push({
+    //       id: doc.id,
+    //       ...(doc.data() as Omit<AccountingBookType, "id">),
+    //     });
+    //   });
+    // }
+    // console.log(allAbleBook);
+    // callbackFn(allAbleBook);
+  });
+
+  return unsubscribe;
+}
 
 // 監聽被共用的帳簿的記帳資料---已寫入監聽當前記帳資料
 

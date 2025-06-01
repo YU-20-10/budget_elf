@@ -30,6 +30,11 @@ export default function PageHeader() {
   const [addBookDescriptionInput, setAddBookDescription] = useState<
     string | undefined
   >("");
+  const [alertMessageIsOpen, setAlertMessageIsOpen] = useState<boolean>(false);
+  const [alertMessageTitle, setAlertMessageTitle] = useState<string>("");
+  const [alertMessageContent, setAlertMessageContent] = useState<
+    ReactNode | undefined
+  >(undefined);
 
   async function addBookClickHandler() {
     if (!addBookNameInput || !userData?.user?.uid) {
@@ -45,11 +50,13 @@ export default function PageHeader() {
       bookName: addBookNameInput,
       bookDescription: addBookDescriptionInput ?? "",
       bookOwnerUid: userData?.user?.uid,
-      displayNames: {[userData?.user?.uid]:(addBookUsernameInput
-        ? addBookUsernameInput
-        : usingUserName
-        ? usingUserName
-        : "")},
+      displayNames: {
+        [userData?.user?.uid]: addBookUsernameInput
+          ? addBookUsernameInput
+          : usingUserName
+          ? usingUserName
+          : "",
+      },
     };
     const doc = await addAccountBook(addAccountingBookInput);
     const setAccountBookRuleInput = {
@@ -158,12 +165,23 @@ export default function PageHeader() {
   //     setSelectedAccountingBook(allAccountBook[0]);
   //   }
   // }, []);
+  useEffect(()=>{
+    if (selectedAccountingBook === undefined) {
+        // setSelectedAccountingBook(allAccountBook[0]);
+        setAlertMessageTitle("尚未選擇任何帳簿");
+        setAlertMessageContent(<>從右上角進行  新增帳簿  或是  選擇帳簿  開始記帳~</>)
+        setAlertMessageIsOpen(true);
+      }
+  },[selectedAccountingBook])
 
   useEffect(() => {
     if (allAccountBook.length > 0) {
-      if (selectedAccountingBook === undefined) {
-        setSelectedAccountingBook(allAccountBook[0]);
-      }
+      // if (selectedAccountingBook === undefined) {
+      //   // setSelectedAccountingBook(allAccountBook[0]);
+      //   setAlertMessageTitle("尚未選擇任何帳簿");
+      //   setAlertMessageContent(<>從右上角進行  新增帳簿  或是  選擇帳簿  開始記帳~</>)
+      //   setAlertMessageIsOpen(true);
+      // }
       console.log(allAccountBook);
       setModalContent(
         <div>
@@ -198,7 +216,7 @@ export default function PageHeader() {
           </div>
         </div>
       );
-    }else{
+    } else {
       setModalContent(
         <div>
           <div>
@@ -223,7 +241,9 @@ export default function PageHeader() {
   return (
     <div className="sticky top-0 right-0 left-0 lg:static lg:left-auto flex justify-center pt-6 px-6 bg-white">
       <div className="container max-w-7xl flex flex-col lg:flex-row lg:justify-end lg:items-center">
-        <h2 className="grow text-center text-lg text-secondary font-bold">{title}</h2>
+        <h2 className="grow text-center text-lg text-secondary font-bold">
+          {title}
+        </h2>
         <div className="flex justify-end">
           <ModalDialog
             modalBtn={selectedAccountingBook?.bookName ?? "新增帳簿"}
@@ -240,6 +260,12 @@ export default function PageHeader() {
             setParentIsOpen={setIsOpen}
             title="新增帳簿"
             content={addBookContent}
+          ></MessageModalDialog>
+          <MessageModalDialog
+            isOpen={alertMessageIsOpen}
+            setIsOpen={setAlertMessageIsOpen}
+            title={alertMessageTitle}
+            content={alertMessageContent}
           ></MessageModalDialog>
         </div>
       </div>

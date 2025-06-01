@@ -7,6 +7,7 @@ import {
   watchAllAccountBook,
   getUserAbleAccountBookIdArr,
   getUserAbleAccountBook,
+  watchUserAbleAccountBook,
 } from "@/lib/firebase/firestore";
 import useAuth from "@/hooks/useAuth";
 import {
@@ -32,6 +33,7 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
     []
   );
   const accountBookRef = useRef<AccountingBookType[] | null>(null);
+  const ableAccountBookRef = useRef<AccountingBookType[] | null>(null);
   const [selectedAccountingBook, setSelectedAccountingBook] = useState<
     AccountingBookType | undefined
   >(undefined);
@@ -79,16 +81,45 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
   }, [user, authLoading]);
   useEffect(() => {
     const id = user?.uid;
+    let unsubscribe: () => void;
     if (id) {
-      (async () => {
-        const allAbleAccountBookArr = await getUserAbleAccountBookIdArr(id);
-        const ableAccountBooks = await getUserAbleAccountBook(
-          allAbleAccountBookArr
-        );
-        setSharedAccountBook(ableAccountBooks);
-        console.log(ableAccountBooks);
-      })();
+      if (ableAccountBookRef.current !== null) {
+        setSharedAccountBook(ableAccountBookRef.current);
+      } else {
+        (async () => {
+          const allAbleAccountBookArr = await getUserAbleAccountBookIdArr(id);
+          const ableAccountBooks = await getUserAbleAccountBook(
+            allAbleAccountBookArr
+          );
+          ableAccountBookRef.current = ableAccountBooks;
+          setSharedAccountBook(ableAccountBooks);
+          // console.log(ableAccountBooks);
+        })();
+      }
+
+      // unsubscribe = watchUserAbleAccountBook(id, (ableAccountBooks) => {
+      //   ableAccountBookRef.current = ableAccountBooks;
+      //   setSharedAccountBook(ableAccountBooks);
+      //   console.log(ableAccountBooks);
+      // });
+      unsubscribe = watchUserAbleAccountBook(
+        id,
+        async (ableAccountBookIdArr) => {
+          const allableAccountBooks = await getUserAbleAccountBook(
+            ableAccountBookIdArr
+          );
+          ableAccountBookRef.current = allableAccountBooks;
+          setSharedAccountBook(allableAccountBooks);
+          // console.log(allableAccountBooks);
+        }
+      );
     }
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user?.uid, invitesData]);
   useEffect(() => {
     setAllAccountBook([...ownAccountBook, ...sharedAccountBook]);
