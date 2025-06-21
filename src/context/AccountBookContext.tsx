@@ -8,6 +8,7 @@ import {
   getUserAbleAccountBookIdArr,
   getUserAbleAccountBook,
   watchUserAbleAccountBook,
+  watchSelectedAccountingBook,
 } from "@/lib/firebase/firestore";
 import useAuth from "@/hooks/useAuth";
 import {
@@ -15,12 +16,14 @@ import {
   AccountBookContextType,
   AccountingRecordWithIdType,
 } from "@/types/AccountingBookType";
+// import { useRouter } from "next/navigation";
 
 export const AccountBookContext = createContext<
   AccountBookContextType | undefined
 >(undefined);
 
 export function AccountBookProvider({ children }: { children: ReactNode }) {
+  // const router = useRouter();
   const { user, loading: authLoading, invitesData } = useAuth();
   // 帳簿
   const [ownAccountBook, setOwnAccountBook] = useState<AccountingBookType[]>(
@@ -49,7 +52,6 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
 
     if (accountBookRef.current !== null) {
       setOwnAccountBook(accountBookRef.current);
-      // setAllAccountBook(accountBookRef.current);
     } else {
       // 取得一次資料
       (async () => {
@@ -57,7 +59,6 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
           if (id) {
             const allAccountBook = await getAllAccountBook(id);
             accountBookRef.current = allAccountBook;
-            // setAllAccountBook(allAccountBook);
             setOwnAccountBook(allAccountBook);
           }
         } catch (error) {
@@ -71,7 +72,6 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
       unsubscribe = watchAllAccountBook(id, (books) => {
         accountBookRef.current = books;
         setOwnAccountBook(books);
-        // setAllAccountBook(books);
       });
     }
 
@@ -96,12 +96,6 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
           // console.log(ableAccountBooks);
         })();
       }
-
-      // unsubscribe = watchUserAbleAccountBook(id, (ableAccountBooks) => {
-      //   ableAccountBookRef.current = ableAccountBooks;
-      //   setSharedAccountBook(ableAccountBooks);
-      //   console.log(ableAccountBooks);
-      // });
       unsubscribe = watchUserAbleAccountBook(
         id,
         async (ableAccountBookIdArr) => {
@@ -110,7 +104,6 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
           );
           ableAccountBookRef.current = allableAccountBooks;
           setSharedAccountBook(allableAccountBooks);
-          // console.log(allableAccountBooks);
         }
       );
     }
@@ -124,6 +117,24 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setAllAccountBook([...ownAccountBook, ...sharedAccountBook]);
   }, [ownAccountBook, sharedAccountBook]);
+  useEffect(() => {
+    if (!selectedAccountingBook) return;
+
+    const unsubscribe = watchSelectedAccountingBook(
+      selectedAccountingBook.id,
+      (book) => {
+        if (JSON.stringify(book) !== JSON.stringify(selectedAccountingBook)) {
+          setSelectedAccountingBook(book);
+        }
+      }
+    );
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [selectedAccountingBook]);
   return (
     <AccountBookContext.Provider
       value={{

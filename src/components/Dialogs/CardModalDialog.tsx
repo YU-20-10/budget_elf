@@ -1,62 +1,33 @@
 "use client";
 
-// import Image from "next/image";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-
 import { AccountingRecordType } from "@/types/AccountingBookType";
-// import { CategoryType } from "@/types/CategoryType";
+import { PaymentRulesType } from "@/types/PaymentRulesType";
 
 type DialogProps = {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  // category: CategoryType[];
+  haveBtn?: boolean;
   record: AccountingRecordType;
+  displayName: Record<string, string> | undefined;
+  paymentRule: PaymentRulesType[];
+  delBtnClickHandler?: (e: React.MouseEvent) => void;
 };
 
 export default function CardModalDialog({
   isOpen,
   setIsOpen,
+  haveBtn = false,
   record,
-}: // category,
-DialogProps) {
-  // const imgSrc = category.find((el) => el.name === record.mainCategory)?.[
-  //   "icon"
-  // ];
-
+  displayName,
+  paymentRule,
+  delBtnClickHandler,
+}: DialogProps) {
+  const usedPaymentRule = record?.paymentRule
+    ? paymentRule.find((rule) => record.paymentRule === rule.name)
+    : null;
   return (
     <>
-      {/* <div onClick={() => setIsOpen(true)} className="cursor-pointer bg-light rounded-lg p-3">
-        <div>{record.recorderUid}</div>
-        <div className="bg-secondary h-px w-full my-2"></div>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <div className="w-10 h-10 bg-white flex justify-center items-center rounded-full me-2">
-              {imgSrc ? (
-                <Image
-                  src={imgSrc}
-                  alt="category icon"
-                  width={24}
-                  height={24}
-                ></Image>
-              ) : (
-                <Image
-                  src="/icon/question_dark_icon.svg"
-                  alt="category icon"
-                  width={24}
-                  height={24}
-                ></Image>
-              )}
-            </div>
-            <div>
-              <p>{record.subCategory}</p>
-              <p>{record.decription}</p>
-            </div>
-          </div>
-          <div>
-            <p>{record.amount}</p>
-          </div>
-        </div>
-      </div> */}
       <Dialog
         open={isOpen}
         onClose={() => setIsOpen(false)}
@@ -69,7 +40,11 @@ DialogProps) {
             <ul>
               <li>
                 <span className="font-bold">記帳人：</span>
-                {record?.recorderUid}
+                {`${
+                  displayName?.[record?.recorderUid]
+                    ? displayName?.[record?.recorderUid]
+                    : record?.recorderUid
+                }`}
               </li>
               <li>
                 <span className="font-bold">日期：</span>
@@ -82,36 +57,42 @@ DialogProps) {
                 {record.amount}
               </li>
               <li>
-                <span className="font-bold">分類：</span>
-                {`${record.categoryType} - ${record.mainCategory} - ${record.subCategory}`}
-              </li>
-              <li>
                 <span className="font-bold">付款方式：</span>
                 {record?.paymentRule}
               </li>
+              <li>
+                <span className="font-bold">回饋：</span>
+                {usedPaymentRule?.reward
+                  ? `+ ${Math.abs(record.amount) * usedPaymentRule?.reward}`
+                  : "+ 0"}
+              </li>
+              <li>
+                <span className="font-bold">分類：</span>
+                {`${record.categoryType} - ${record.mainCategory} - ${record.subCategory}`}
+              </li>
+
               <li>
                 <span className="font-bold">備註：</span>
                 {record?.description}
               </li>
             </ul>
           </div>
-          <div className="flex justify-end">
+          <div className={`${haveBtn ? "flex" : "hidden"} justify-end`}>
             <button
               className="border rounded-xl px-3 py-2 me-3"
-              onClick={() => setIsOpen(false)}
+              onClick={delBtnClickHandler}
             >
               刪除
             </button>
-            <button
+            {/* <button
               className="border rounded-xl px-3 py-2"
               onClick={() => setIsOpen(false)}
             >
               修改
-            </button>
+            </button> */}
           </div>
         </DialogPanel>
       </Dialog>
     </>
   );
 }
-

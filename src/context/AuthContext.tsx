@@ -7,8 +7,12 @@ import { firebaseAuth } from "@/lib/firebase/firebaseConfig";
 import {
   getUserData,
   watchAccountBookInvites,
+  watchAccountBookRemoval,
 } from "@/lib/firebase/firestore";
-import { accountBookInvitesType } from "@/types/AccountingBookType";
+import {
+  accountBookInvitesType,
+  accountBookRemovalType,
+} from "@/types/AccountingBookType";
 
 type UserData = {
   user: User | null;
@@ -22,6 +26,7 @@ type AuthContextType = {
   name: string;
   loading: boolean;
   invitesData: accountBookInvitesType[];
+  removalDate: accountBookRemovalType[];
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(
@@ -35,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
   });
   const [invitesData, setInvitesData] = useState<accountBookInvitesType[]>([]);
+  const [removalDate, setRemovalData] = useState<accountBookRemovalType[]>([]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
@@ -77,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let unsubscribe: () => void;
     if (id) {
       unsubscribe = watchAccountBookInvites(id, (invitesArr) => {
-        console.log(invitesArr);
+        console.log("invitesArr", invitesArr);
         setInvitesData(invitesArr);
       });
     }
@@ -87,9 +93,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
   }, [userData]);
+  useEffect(() => {
+    const uid = userData?.user?.uid;
+    let unsubscribe: () => void;
+    if (uid) {
+      unsubscribe = watchAccountBookRemoval(uid, (removals) => {
+        console.log("removeArr", removals);
+        setRemovalData(removals);
+      });
+    }
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [userData?.user?.uid]);
 
   return (
-    <AuthContext.Provider value={{ ...userData, invitesData }}>
+    <AuthContext.Provider value={{ ...userData, invitesData, removalDate }}>
       {children}
     </AuthContext.Provider>
   );

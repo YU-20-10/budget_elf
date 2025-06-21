@@ -29,6 +29,15 @@ export type AccountingRecordType = {
 
 export type AccountingRecordWithIdType = AccountingRecordType & { id: string };
 
+export type AccountingRecordWithIdAndBookIdType = AccountingRecordType & {
+  recordId: string;
+  accountingBookId: string;
+};
+
+export type AccountingRecordSortType = {
+  [key: string]: AccountingRecordWithIdAndBookIdType[];
+};
+
 export type AccountBookContextType = {
   allAccountBook: AccountingBookType[];
   selectedAccountingBook: AccountingBookType | undefined;
@@ -59,6 +68,16 @@ export type UserAbleAccountBookType = {
 
 export type accountBookInvitesType = {
   invitesId: string;
+  fromUid: string;
+  toUid: string;
+  accountingBookId: string;
+  accountingBookName: string;
+  status: string;
+  createTime: Timestamp;
+};
+
+export type accountBookRemovalType = {
+  removeId: string;
   fromUid: string;
   toUid: string;
   accountingBookId: string;

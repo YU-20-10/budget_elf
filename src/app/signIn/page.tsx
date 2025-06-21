@@ -50,7 +50,7 @@ export default function SignIn() {
         signInInputData.signInPassword
       );
       alert("登入成功");
-      router.push("/record");
+      router.push("/accountingBook");
     } catch (error) {
       alert(`登入失敗,${error}`);
     }

@@ -41,7 +41,7 @@ export default function MessageModalDialog({
       >
         <DialogPanel className="max-w-lg min-w-2xs md:min-w-md space-y-4 bg-white p-6 lg:p-10 rounded-xl lg:max-h-5/6 overflow-auto">
           <DialogTitle className="font-bold">{title}</DialogTitle>
-          <div>{content}</div>
+          <div autoFocus>{content}</div>
 
           <div className="flex justify-end">
             {withCancelBtn ? (
