@@ -1,12 +1,15 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, ReactNode } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
 
 import useAccountBook from "@/hooks/useAccountBook";
 import ModalDialog from "@/components/Dialogs/ModalDialog";
 import CategoryTab from "@/components/Tabs/CategoryTab";
 import CardModalDialog from "@/components/Dialogs/CardModalDialog";
+import MessageModalDialog from "@/components/Dialogs/MessageModalDialog";
+
 import {
   defaultExpenseMainCategory,
   defaultExpenseSubCategory,
@@ -22,6 +25,9 @@ import {
   addAccountingRecord,
   getAccountingRecord,
   watchAccountingRecord,
+  delAccountingRecord,
+  // addAccountBook,
+  // setAccountBookRule,
 } from "@/lib/firebase/firestore";
 import useAuth from "@/hooks/useAuth";
 
@@ -40,49 +46,66 @@ const otherSubCategory = { ...defaultOtherSubCategory };
 // ModalDialog
 const paymentRules = [...defaultPaymentRules];
 
+// Daypicker
+const defaultClassNames = getDefaultClassNames();
+
 export default function Record() {
-  // 使用者
+  const router = useRouter();
   const userData = useAuth();
-  // 帳簿
-  const { selectedAccountingBook, selectedBookRecord, setSelectedBookRecord } =
-    useAccountBook();
+  const {
+    allAccountBook,
+    selectedAccountingBook,
+    setSelectedAccountingBook,
+    selectedBookRecord,
+    setSelectedBookRecord,
+  } = useAccountBook();
+
   // 記帳資料
   const accountingRecordRef = useRef<AccountingRecordWithIdType[] | undefined>(
     undefined
   );
-  // Daypicker
-  const defaultClassNames = getDefaultClassNames();
 
   // --- useState ---
-  // 記帳
-  const [selectCategoryType, setSelectCategoryType] = useState<string>("支出");
+  // 取得遠端資料後儲存用
+
+  // 元件控制用
   // Daypicker
   const [selected, setSelected] = useState<Date>(new Date());
   // CategoryTab
   const [categoryDisplay, setCategoryDisplay] =
     useState<string>("mainCategory");
+  const [selectedTabIndex, setSelectedTabIndex] = useState<number>(0);
+  // Dialog
+  const [categoryIsOpen, setcategoryIsOpen] = useState<boolean>(false);
+  const [dateIsOpen, setDateIsOpen] = useState<boolean>(false);
+  const [paymentIsOpen, setPaymentIsOpen] = useState<boolean>(false);
+  const [alertMessageIsOpen, setAlertMessageIsOpen] = useState<boolean>(false);
+  // const [cardModalIsOpen, setCardModalIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [addBookOpen, setAddBookOpen] = useState<boolean>(false);
+
+  // 資料顯示用 / 排序歸類資料
+  const [organizeAccountingRecord, setOrganizeAccountingRecord] =
+    useState<organizeDataType>({});
+  const [activeRecord, setActiveRecord] =
+    useState<AccountingRecordWithIdType | null>(null);
+  const [alertMessageContent, setAlertMessageContent] = useState<ReactNode>(
+    <></>
+  );
+  const [modalContent, setModalContent] = useState<ReactNode>(null);
+
+  // 取得使用者互動資料用
+  const [selectCategoryType, setSelectCategoryType] = useState<string>("支出");
   const [selectedMainCategory, setSelectedMainCategory] = useState<
     string | undefined
   >(undefined);
   const [selectedSubCategory, setSelectedSubCategory] = useState<
     string | undefined
   >(undefined);
-  const [selectedTabIndex, setSelectedTabIndex] = useState<number>(0);
-  // ModalDialog
   const [amountInput, setAmountInput] = useState<string>("");
-  const [categoryIsOpen, setcategoryIsOpen] = useState<boolean>(false);
-  const [dateIsOpen, setDateIsOpen] = useState<boolean>(false);
-  const [paymentIsOpen, setPaymentIsOpen] = useState<boolean>(false);
   const [selectedPaymentRule, setSelectedPaymentRule] =
     useState<PaymentRulesType | null>(null);
   const [inputDescription, setInputDescription] = useState<string | null>(null);
-  // CardModalDialog
-  const [cardModalIsOpen, setCardModalIsOpen] = useState<boolean>(false);
-  // 記帳資料
-  const [organizeAccountingRecord, setOrganizeAccountingRecord] =
-    useState<organizeDataType>({});
-  const [activeRecord, setActiveRecord] =
-    useState<AccountingRecordWithIdType | null>(null);
   // --- useState ---
 
   // --- function ---
@@ -123,7 +146,8 @@ export default function Record() {
   // 記帳
   async function recordSubmitHandler() {
     if (amountInput === "" || !selectedMainCategory || !selectedSubCategory) {
-      alert("表單未填寫完整");
+      setAlertMessageContent(<p>表單未填寫完整</p>);
+      setAlertMessageIsOpen(true);
       return;
     }
     const record = {
@@ -141,13 +165,91 @@ export default function Record() {
     };
     if (selectedAccountingBook?.id) {
       try {
-        const result = await addAccountingRecord(
-          selectedAccountingBook?.id,
-          record
-        );
-        console.log(result);
+        await addAccountingRecord(selectedAccountingBook?.id, record);
       } catch (error) {
         console.log("記帳錯誤", error);
+      }
+    }
+  }
+  function cardModalDelBtnClickHandler() {
+    setAlertMessageContent(
+      <div className="w-full">
+        <p className="mb-4">確認要刪除此筆紀錄?</p>
+        <ul className="border rounded-xl p-3 mb-4">
+          <li>
+            <span className="font-bold">記帳人：</span>
+            {`${
+              activeRecord?.recorderUid
+                ? selectedAccountingBook?.displayNames?.[
+                    activeRecord?.recorderUid
+                  ]
+                  ? selectedAccountingBook?.displayNames?.[
+                      activeRecord?.recorderUid
+                    ]
+                  : activeRecord?.recorderUid
+                : ""
+            }`}
+          </li>
+          <li>
+            <span className="font-bold">日期：</span>
+            {activeRecord?.transactionDate instanceof Date
+              ? activeRecord?.transactionDate.toLocaleDateString("zh-TW")
+              : ""}
+          </li>
+          <li>
+            <span className="font-bold">金額：</span>
+            {activeRecord?.amount}
+          </li>
+          <li>
+            <span className="font-bold">付款方式：</span>
+            {activeRecord?.paymentRule}
+          </li>
+          <li>
+            <span className="font-bold">分類：</span>
+            {`${activeRecord?.categoryType} - ${activeRecord?.mainCategory} - ${activeRecord?.subCategory}`}
+          </li>
+
+          <li>
+            <span className="font-bold">備註：</span>
+            {activeRecord?.description}
+          </li>
+        </ul>
+        <div className="flex justify-around">
+          <button
+            type="button"
+            className="block border px-4 py-3 rounded-xl"
+            onClick={() => setAlertMessageIsOpen(false)}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className="block bg-primary px-4 py-3 rounded-xl"
+            onClick={confirmDelRecord}
+          >
+            確認
+          </button>
+        </div>
+      </div>
+    );
+    setAlertMessageIsOpen(true);
+  }
+
+  async function confirmDelRecord() {
+    if (selectedAccountingBook?.id && activeRecord?.id) {
+      const result = await delAccountingRecord(
+        selectedAccountingBook.id,
+        activeRecord.id
+      );
+      if (result) {
+        setAlertMessageIsOpen(false);
+        setAlertMessageContent(<p>紀錄已刪除</p>);
+        setActiveRecord(null);
+        setAlertMessageIsOpen(true);
+      } else {
+        setAlertMessageIsOpen(false);
+        setAlertMessageContent(<p>紀錄未能刪除，請稍後再試</p>);
+        setAlertMessageIsOpen(true);
       }
     }
   }
@@ -263,21 +365,84 @@ export default function Record() {
     }
     organizeRecord();
   }, [selectedBookRecord]);
-  // useEffect(() => {
-  //   console.log(inputDescription);
-  // }, [inputDescription]);
-  // useEffect(() => {
-  //   console.log("selectedMainCategory", selectedMainCategory);
-  //   console.log("selectedSubCategory", selectedSubCategory);
-  //   // console.log("isOpen", isOpen);
-  //   console.log("selectedTabIndex", selectedTabIndex);
-  // }, [categoryDisplay, selectedTabIndex]);
+
+  useEffect(() => {
+    if (allAccountBook.length > 0) {
+      // console.log(allAccountBook);
+      setModalContent(
+        <div>
+          <ul className="mb-10">
+            {allAccountBook.map((book) => (
+              <li className="border rounded-xl mb-2" key={book.id}>
+                <button
+                  type="button"
+                  className={`block w-full p-3 rounded-xl ${
+                    selectedAccountingBook?.id === book.id
+                      ? `bg-primary text-white`
+                      : `bg-white`
+                  }`}
+                  onClick={() => {
+                    setSelectedAccountingBook(book);
+                    setIsOpen(false);
+                  }}
+                >
+                  {book.bookName}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    } else {
+      setModalContent(
+        <div>
+          <div>
+            <button
+              type="button"
+              onClick={() => setAddBookOpen(true)}
+              className="border w-full p-3 rounded-xl bg-secondary text-white"
+            >
+              新增帳簿
+            </button>
+          </div>
+        </div>
+      );
+    }
+  }, [
+    allAccountBook,
+    selectedAccountingBook,
+    setSelectedAccountingBook,
+    addBookOpen,
+  ]);
+
   // --- useEffect ---
 
   return (
     <main className="flex flex-col items-center p-6 lg:min-h-[calc(100vh-100px)] mb-25 lg:mb-0">
       <div className="container grow">
-        <div className="flex flex-col lg:flex-row-reverse h-full">
+        <div className="mb-3 flex justify-between">
+          <button
+            type="button"
+            onClick={() => {
+              router.push("/accountingBook");
+            }}
+            className="flex justify-center items-center border border-primary rounded-xl p-3 overflow-hidden min-w-[120px]"
+          >
+            <i className="bi bi-arrow-left-circle-fill text-2xl text-secondary hover:text-black focus:text-black pe-2"></i>
+            返回
+          </button>
+          <ModalDialog
+            modalBtn={selectedAccountingBook?.bookName ?? "選擇帳簿"}
+            title="帳簿"
+            decription="請選擇要使用的帳簿"
+            content={modalContent}
+            isOpen={isOpen}
+            setIsOpen={setIsOpen}
+            minWidth={true}
+            full={false}
+          ></ModalDialog>
+        </div>
+        <div className="flex flex-col lg:flex-row-reverse h-4/5">
           <div className="lg:w-1/2 py-3 flex flex-col grow">
             <div className="mb-3">
               <ModalDialog
@@ -348,10 +513,8 @@ export default function Record() {
               </button>
             </div>
           </div>
-          <div className="lg:w-1/2 py-3 grow p-3 lg:me-3 lg:h-[calc(100vh-150px)]">
+          <div className="lg:w-1/2 py-3 grow p-3 lg:me-3 lg:h-[calc(100vh-170px)]">
             <div className="border h-full p-3 overflow-auto">
-              {/* <p>記帳</p>
-              <p>{selectedAccountingBook?.bookName}</p> */}
               <div className="lg:h-full overflow-auto">
                 {Object.keys(organizeAccountingRecord).length > 0 ? (
                   Object.keys(organizeAccountingRecord).map((date) => {
@@ -368,11 +531,13 @@ export default function Record() {
                           ];
                           return (
                             <div key={record.id} className="mt-3 my-4">
-                              <CardModalDialog
+                              {/* <CardModalDialog
                                 isOpen={cardModalIsOpen}
                                 setIsOpen={setCardModalIsOpen}
                                 record={record}
-                              ></CardModalDialog>
+                                displayName={selectedAccountingBook?.displayNames}
+                                paymentRule={paymentRules}
+                              ></CardModalDialog> */}
                               <div
                                 onClick={() => {
                                   // setCardModalIsOpen(true);
@@ -451,9 +616,27 @@ export default function Record() {
                         if (!open) setActiveRecord(null);
                       }}
                       record={activeRecord}
+                      displayName={selectedAccountingBook?.displayNames}
+                      paymentRule={paymentRules}
+                      haveBtn={
+                        activeRecord.recorderUid === userData?.user?.uid
+                          ? true
+                          : false
+                      }
+                      delBtnClickHandler={cardModalDelBtnClickHandler}
                     ></CardModalDialog>
                   </div>
                 )}
+                <MessageModalDialog
+                  isOpen={alertMessageIsOpen}
+                  setIsOpen={setAlertMessageIsOpen}
+                  title=""
+                  content={
+                    <div className="min-h-25 flex justify-center items-center">
+                      {alertMessageContent}
+                    </div>
+                  }
+                ></MessageModalDialog>
               </div>
             </div>
           </div>

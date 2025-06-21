@@ -71,7 +71,7 @@ export default function SignUp() {
       console.log(userDoc);
       if (userDoc) {
         alert("註冊成功");
-        router.push("/record");
+        router.push("/accountingBook");
       } else {
         alert("註冊失敗");
       }

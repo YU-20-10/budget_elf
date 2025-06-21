@@ -15,8 +15,9 @@ import {
   arrayUnion,
   DocumentReference,
   DocumentSnapshot,
+  deleteDoc,
   // documentId,
-  // runTransaction,
+  runTransaction,
 } from "firebase/firestore";
 
 import { firestore } from "@/lib/firebase/firebaseConfig";
@@ -29,6 +30,8 @@ import {
   AccountBookRuleMemberType,
   UserAbleAccountBookType,
   accountBookInvitesType,
+  AccountingRecordWithIdAndBookIdType,
+  accountBookRemovalType,
 } from "@/types/AccountingBookType";
 import { FirebaseError } from "firebase/app";
 
@@ -56,7 +59,7 @@ export async function setUserData(uid: string, name: string, email: string) {
   }
 }
 
-// 取得使用者資料
+// 取得使用者資料by id
 export async function getUserData(uid: string) {
   const docRef = doc(firestore, "users", uid);
   let userData = null;
@@ -70,6 +73,26 @@ export async function getUserData(uid: string) {
   } catch (error) {
     console.log("getUserData錯誤", error);
     throw error;
+  }
+}
+
+//取得使用者資料by email
+export async function getUserDataByEmail(email: string) {
+  try {
+    const q = query(
+      collection(firestore, "users"),
+      where("email", "==", email)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return "";
+    const rowUserData = snapshot.docs[0];
+    return {
+      id: rowUserData.id,
+      ...rowUserData.data(),
+    };
+  } catch (error) {
+    console.log("getUserDataByEmail錯誤", error);
+    return "";
   }
 }
 
@@ -102,11 +125,21 @@ export async function getAllAccountBook(
   uid: string
 ): Promise<AccountingBookType[]> {
   const docRef = collection(firestore, "accountingBooks");
-  const accountBookQuery = query(docRef, where("bookOwnerUid", "==", uid));
+  const accountBookQuery = query(
+    docRef,
+    where("bookOwnerUid", "==", uid),
+    orderBy("createTime", "desc")
+  );
   const result = await getDocs(accountBookQuery);
   return result.docs.map((doc) => ({
     id: doc.id,
     ...(doc.data() as Omit<AccountingBookType, "id">),
+    createTime:
+      doc.data()?.createTime instanceof Timestamp
+        ? doc.data()?.createTime.toDate()
+        : doc.data()?.createTime instanceof Date
+        ? doc.data()?.createTime
+        : "",
   }));
 }
 
@@ -118,7 +151,11 @@ export function watchAllAccountBook(
   // () => void --> watchAllAccountBook的回傳值是一個函式，不帶參數也沒有回傳值的函式
 ): () => void {
   const docRef = collection(firestore, "accountingBooks");
-  const accountBookQuery = query(docRef, where("bookOwnerUid", "==", uid));
+  const accountBookQuery = query(
+    docRef,
+    where("bookOwnerUid", "==", uid),
+    orderBy("createTime", "desc")
+  );
 
   // onSnapshot() 會回傳一個取消監聽的函式
   // onSnapshot()可以監聽整個collection或是一個查詢結果
@@ -130,6 +167,12 @@ export function watchAllAccountBook(
       const books = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...(doc.data() as Omit<AccountingBookType, "id">),
+        createTime:
+          doc.data()?.createTime instanceof Timestamp
+            ? doc.data()?.createTime.toDate()
+            : doc.data()?.createTime instanceof Date
+            ? doc.data()?.createTime
+            : "",
       }));
       callbackFn(books);
     },
@@ -139,6 +182,18 @@ export function watchAllAccountBook(
   );
 
   return unsubscribe;
+}
+
+// 刪除帳簿
+export async function delAllAccountBook(accountBookId: string) {
+  try {
+    const docRef = doc(firestore, "accountingBooks", accountBookId);
+    await deleteDoc(docRef);
+    return true;
+  } catch (error) {
+    console.log("delAllAccountBook", error);
+    return false;
+  }
 }
 
 // 更新帳簿設定(帳簿名稱、帳簿描述、自訂義分類)
@@ -190,6 +245,20 @@ export async function setAccountBookRule(
 }
 
 // 取得指定帳簿的規則
+export async function getAccountBookRule(accountBookId: string) {
+  const docRef = doc(firestore, "accountBookRule", accountBookId);
+  try {
+    const ruleDoc = await getDoc(docRef);
+    if (ruleDoc.exists()) {
+      return ruleDoc.data() as AccountBookRuleType;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    console.log("getAccountBookRule", error);
+    return false;
+  }
+}
 
 // 更新帳簿規則-新增帳簿共用人
 export async function updateAccountBookRuleAddBookMember(
@@ -202,6 +271,41 @@ export async function updateAccountBookRuleAddBookMember(
     return true;
   } catch (error) {
     console.log("updateccountBookRuleAddBookMember錯誤", error);
+  }
+}
+
+// 更新帳簿規則-刪除帳簿共用人
+export async function updateAccountBookRuleRemoveMember(
+  accountBookRuleId: string,
+  delBookMemberId: string
+) {
+  const docRef = doc(firestore, "accountBookRule", accountBookRuleId);
+
+  try {
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) throw new Error("帳簿ID錯誤或是沒有該帳簿");
+
+    const bookMember = snap.data().bookMember as AccountBookRuleMemberType[];
+    const editedBookMember = bookMember.filter(
+      (member: AccountBookRuleMemberType) => member.uid !== delBookMemberId
+    );
+    await updateDoc(docRef, { bookMember: editedBookMember });
+    return true;
+  } catch (error) {
+    console.log("updateAccountBookRuleRemoveMember", error);
+    return false;
+  }
+}
+
+// 刪除帳簿規則
+export async function delAccountBookRule(accountBookRuleId: string) {
+  try {
+    const docRef = doc(firestore, "accountBookRule", accountBookRuleId);
+    await deleteDoc(docRef);
+    return true;
+  } catch (error) {
+    console.log("delAccountBookRule", error);
+    return false;
   }
 }
 
@@ -239,6 +343,102 @@ export async function updateAccountBookInvites(
     });
   } catch (error) {
     console.log("updateAccountBookInvites錯誤", error);
+  }
+}
+
+export async function getAccountBookInvites(
+  accountingBookId: string,
+  ownerUid: string,
+  delMemberUid: string
+) {
+  try {
+    const collectionRef = collection(firestore, "accountBookInvites");
+    const q = query(
+      collectionRef,
+      where("accountingBookId", "==", accountingBookId),
+      where("fromUid", "==", ownerUid),
+      where("toUid", "==", delMemberUid)
+    );
+    const snaps = await getDocs(q);
+    const invitesDataArr = snaps.docs.map((doc) => {
+      return {
+        invitesId: doc.id,
+        ...(doc.data() as Omit<accountBookInvitesType, "invitesId">),
+      };
+    });
+    return invitesDataArr;
+  } catch (error) {
+    console.log("getAccountBookInvites", error);
+    return false;
+  }
+}
+
+// 刪除單筆邀請資料
+export async function delAccountBookInvites(invitesId: string) {
+  try {
+    const docRef = doc(firestore, "accountBookInvites", invitesId);
+    await deleteDoc(docRef);
+    return true;
+  } catch (error) {
+    console.log("delAccountBookInvites", error);
+    throw {
+      invitesId,
+      error,
+    };
+  }
+}
+
+// 刪除指定帳簿的所有邀請資料
+export async function delAllAccountBookInvites(
+  accountingBookId: string,
+  ownerUid: string
+) {
+  try {
+    let allSharedMember: AccountBookRuleMemberType[] = [];
+    const rowRuleData = await getDoc(
+      doc(firestore, "accountBookRule", accountingBookId)
+    );
+    if (rowRuleData.exists()) {
+      const rule = rowRuleData.data() as AccountBookRuleType;
+      allSharedMember = rule.bookMember.filter(
+        (member) => member.uid !== rule.bookOwnerUid
+      );
+    }
+    const rowAllInvites = await Promise.all(
+      allSharedMember.map(async (memberObj) => {
+        const collectionRef = collection(firestore, "accountBookInvites");
+        const q = query(
+          collectionRef,
+          where("accountingBookId", "==", accountingBookId),
+          where("fromUid", "==", ownerUid),
+          where("toUid", "==", memberObj.uid)
+        );
+        const snaps = await getDocs(q);
+        const invitesDataArr = snaps.docs.map((doc) => {
+          return {
+            invitesId: doc.id,
+            ...(doc.data() as Omit<accountBookInvitesType, "invitesId">),
+          };
+        });
+        return invitesDataArr as accountBookInvitesType[];
+      })
+    );
+    const allInvites: accountBookInvitesType[] = rowAllInvites.flat();
+
+    await runTransaction(firestore, async (transaction) => {
+      for (const invite of allInvites) {
+        const docRef = doc(
+          firestore,
+          "accountBookInvites",
+          invite.invitesId
+        );
+        transaction.delete(docRef);
+      }
+    });
+    return true;
+  } catch (error) {
+    console.log("delAllAccountBookInvites", error);
+    return false;
   }
 }
 
@@ -287,58 +487,25 @@ export async function setUserAbleAccountBook(
   }
 }
 
-// 新增共用帳簿資料至可讀取帳簿+更新帳簿內名稱->因為有依賴關係
-// export async function setUserAbleAccountBookandUpdateThisName(
-//   accountingBookId: string,
-//   uid: string,
-//   displayName: string
-// ) {
-//   try {
-//     await runTransaction(firestore, async (transaction) => {
-//       // 讀取當前able account book的資料
-//       const accountingBookRef = doc(
-//         firestore,
-//         "accountingBooks",
-//         accountingBookId
-//       );
-//       const snapshot = await transaction.get(accountingBookRef);
-//       const accountingBookData = snapshot.data();
-
-//       // 新增到able account book
-//       const userAbleAccountBookRef = doc(
-//         firestore,
-//         "userAbleAccountBooks",
-//         uid,
-//         "ableAccountBooks",
-//         accountingBookId
-//       );
-//       transaction.set(userAbleAccountBookRef, {
-//         accountingBookId: accountingBookId,
-//       });
-
-//       // 更新displayName
-//       transaction.update(accountingBookRef, {
-//         displayNames: {
-//           ...accountingBookData?.displayNames,
-//           [uid]: displayName,
-//         },
-//       });
-//     });
-//     return true;
-//   } catch (error) {
-//     console.log("setUserAbleAccountBook錯誤", error);
-//   }
-// }
-// match /userAbleAccountBooks/{userId}/ableAccountBooks/{bookId} {
-//   allow read, write: if request.auth != null && request.auth.uid == userId;
-// }
-// match /accountBookInvites/{inviteId} {
-//   allow create: if request.auth != null; // 任何登入者可建立邀請
-//   allow read, update: if request.auth != null && (
-//     request.auth.uid == resource.data.toUid || // 被邀請人可讀與接受/拒絕
-//     request.auth.uid == resource.data.fromUid   // 邀請人可查看
-//   );
-// }
+export async function delUserAbleAccountBook(
+  uid: string,
+  accountingBookId: string
+) {
+  const docRef = doc(
+    firestore,
+    "userAbleAccountBooks",
+    uid,
+    "ableAccountBooks",
+    accountingBookId
+  );
+  try {
+    await deleteDoc(docRef);
+    return true;
+  } catch (error) {
+    console.log("delUserAbleAccountBook", error);
+    return false;
+  }
+}
 
 // 取得被共用的可讀取帳簿的id及暱稱物件的陣列
 export async function getUserAbleAccountBookIdArr(uid: string) {
@@ -395,12 +562,6 @@ export async function getUserAbleAccountBook(
     // ableBookRefs.map((ref) => getDoc(ref))
     ableBookRefs.map((ref) => getDocWithRetry(ref))
   );
-  // const allAbleBook = ableBookSnapShots
-  //   .filter((docSnap) => docSnap.exists)
-  //   .map((docSnap) => ({
-  //     id: docSnap.id,
-  //     ...(docSnap.data() as Omit<AccountingBookType, "id">),
-  //   }));
   const allAbleBook = ableBookSnapShots
     .filter(
       (docSnap): docSnap is DocumentSnapshot =>
@@ -409,7 +570,18 @@ export async function getUserAbleAccountBook(
     .map((docSnap) => ({
       id: docSnap.id,
       ...(docSnap.data() as Omit<AccountingBookType, "id">),
-    }));
+      createTime:
+        docSnap.data()?.createTime instanceof Timestamp
+          ? docSnap.data()?.createTime.toDate()
+          : docSnap.data()?.createTime instanceof Date
+          ? docSnap.data()?.createTime
+          : null,
+    }))
+    .sort((a, b) => {
+      if (!a.createTime) return 1;
+      if (!b.createTime) return -1;
+      return b.createTime.getTime() - a.createTime.getTime(); // 由新到舊排序
+    });
   return allAbleBook;
 }
 
@@ -418,7 +590,7 @@ export function watchUserAbleAccountBook(
   uid: string,
   // callbackFn: (ableAccountBooks: AccountingBookType[]) => void
   callbackFn: (ableAccountBookIdArr: UserAbleAccountBookType[]) => void
-) {
+): () => void {
   const ableBookRef = collection(
     firestore,
     "userAbleAccountBooks",
@@ -426,43 +598,27 @@ export function watchUserAbleAccountBook(
     "ableAccountBooks"
   );
   const unsubscribe = onSnapshot(ableBookRef, async (snapshot) => {
-    const ableBookIdArr = snapshot.docs.map(
-      (doc) => doc.data() as UserAbleAccountBookType
-    );
+    const ableBookIdArr = snapshot.docs.map((doc) => {
+      return {
+        id: doc.id,
+        ...(doc.data() as Omit<UserAbleAccountBookType, "id">),
+        createTime:
+          doc.data()?.createTime instanceof Timestamp
+            ? doc.data()?.createTime.toDate()
+            : doc.data()?.createTime instanceof Date
+            ? doc.data()?.createTime
+            : "",
+      };
+    });
     if (ableBookIdArr.length < 0) {
       callbackFn([]);
     } else {
       callbackFn(ableBookIdArr);
     }
-    // if (ableBookIdArr.length < 0) {
-    //   callbackFn([]);
-    //   return;
-    // }
-    // console.log(ableBookIdArr);
-    // Firestore 限制 where(..., "in", [...])最多只能10筆
-    // const newAbleBookArr = chunkArr(ableBookIdArr, 10);
-    // const allAbleBook: AccountingBookType[] = [];
-    // for (const bookArr of newAbleBookArr) {
-    //   const q = query(
-    //     collection(firestore, "accountingBooks"),
-    //     where(documentId(), "in", bookArr)
-    //   );
-    //   const snap = await getDocs(q);
-    //   snap.forEach((doc) => {
-    //     allAbleBook.push({
-    //       id: doc.id,
-    //       ...(doc.data() as Omit<AccountingBookType, "id">),
-    //     });
-    //   });
-    // }
-    // console.log(allAbleBook);
-    // callbackFn(allAbleBook);
   });
 
   return unsubscribe;
 }
-
-// 監聽被共用的帳簿的記帳資料---已寫入監聽當前記帳資料
 
 // 新增記帳紀錄
 export async function addAccountingRecord(
@@ -517,6 +673,69 @@ export async function getAccountingRecord(accountBookId: string) {
   }
 }
 
+// 取得所有記帳資料包含自己的以及被共用的
+export async function getAllAccountingRecord(accountBookIdArr: string[]) {
+  const recordRefs = accountBookIdArr.map((bookId) =>
+    collection(firestore, "accountingBooks", bookId, "accountingRecords")
+  );
+  const recordSnapshots = await Promise.all(
+    recordRefs.map((ref) => getDocs(ref))
+  );
+  const allRecord: AccountingRecordWithIdAndBookIdType[] = [];
+  accountBookIdArr.forEach((bookId, index) => {
+    const snapshot = recordSnapshots[index];
+    snapshot.docs.forEach((doc) => {
+      const data = doc.data() as Omit<AccountingRecordType, "id">;
+      allRecord.push({
+        accountingBookId: bookId,
+        recordId: doc.id,
+        ...data,
+        transactionDate:
+          data.transactionDate instanceof Timestamp
+            ? data.transactionDate.toDate()
+            : data.transactionDate instanceof Date
+            ? data.transactionDate
+            : null,
+      });
+    });
+  });
+  return allRecord;
+}
+
+export async function getAllMyAccountingRecord(
+  accountBookIdArr: string[],
+  uid: string
+) {
+  const recordQuerys = accountBookIdArr.map((bookId) =>
+    query(
+      collection(firestore, "accountingBooks", bookId, "accountingRecords"),
+      where("recorderUid", "==", uid)
+    )
+  );
+  const recordSnapshots = await Promise.all(
+    recordQuerys.map((q) => getDocs(q))
+  );
+  const allRecord: AccountingRecordWithIdAndBookIdType[] = [];
+  accountBookIdArr.forEach((bookId, index) => {
+    const snapshot = recordSnapshots[index];
+    snapshot.docs.forEach((doc) => {
+      const data = doc.data() as Omit<AccountingRecordType, "id">;
+      allRecord.push({
+        accountingBookId: bookId,
+        recordId: doc.id,
+        ...data,
+        transactionDate:
+          data.transactionDate instanceof Timestamp
+            ? data.transactionDate.toDate()
+            : data.transactionDate instanceof Date
+            ? data.transactionDate
+            : null,
+      });
+    });
+  });
+  return allRecord;
+}
+
 // 監聽帳簿資料是否更新，如果更新返回新的資料
 export function watchAccountingRecord(
   accountBookId: string,
@@ -545,10 +764,6 @@ export function watchAccountingRecord(
               : data.transactionDate instanceof Date
               ? data.transactionDate
               : null,
-          // transactionDate:
-          //   data.transactionDate instanceof Date
-          //     ? data.transactionDate
-          //     : data.transactionDate.toDate(),
         };
       });
       callbackFn(records);
@@ -559,4 +774,203 @@ export function watchAccountingRecord(
   );
 
   return unsubscribe;
+}
+
+// 移除單筆記帳紀錄
+export async function delAccountingRecord(
+  accountBookId: string,
+  recordId: string
+) {
+  try {
+    const docRef = doc(
+      firestore,
+      "accountingBooks",
+      accountBookId,
+      "accountingRecords",
+      recordId
+    );
+    await deleteDoc(docRef);
+    return true;
+  } catch (error) {
+    console.log("delAccountingRecord", error);
+    return false;
+  }
+}
+
+// 移除所有記帳紀錄
+export async function delAllAccountingRecord(accountingBookId: string) {
+  try {
+    const collectionRef = collection(
+      firestore,
+      "accountingBooks",
+      accountingBookId,
+      "accountingRecords"
+    );
+    const snaps = await getDocs(collectionRef);
+    await runTransaction(firestore, async (transaction) => {
+      snaps.docs.forEach((record) => {
+        const docRef = doc(
+          firestore,
+          "accountingBooks",
+          accountingBookId,
+          "accountingRecords",
+          record.id
+        );
+        transaction.delete(docRef);
+      });
+    });
+    return true;
+  } catch (error) {
+    console.log("delAllAccountingRecord", error);
+    return false;
+  }
+}
+
+// 移除共用者請求 (要確認傳入值)
+export async function addAccountBookRemoval(
+  uid: string,
+  RemoveUid: string,
+  accountingBookId: string,
+  accountingBookName: string
+) {
+  try {
+    const docRef = collection(firestore, "accountBookRemovals");
+    const data = await addDoc(docRef, {
+      fromUid: uid,
+      toUid: RemoveUid,
+      accountingBookId: accountingBookId,
+      status: "pending",
+      accountingBookName: accountingBookName,
+      createTime: serverTimestamp(),
+    });
+    return data;
+  } catch (error) {
+    console.log("addAccountBookRemoval", error);
+    return false;
+  }
+}
+
+// 變更移除共用者請求
+export async function updateAccountBookRemoval(
+  removeId: string,
+  status: string
+) {
+  const docRef = doc(firestore, "accountBookRemovals", removeId);
+  try {
+    await updateDoc(docRef, {
+      status,
+    });
+  } catch (error) {
+    console.log("updateAccountBookRemoval", { removeId, status, error });
+  }
+}
+
+// 監聽移除共用者請求
+export function watchAccountBookRemoval(
+  uid: string,
+  callbackFn: (removeArr: accountBookRemovalType[]) => void
+) {
+  const ref = collection(firestore, "accountBookRemovals");
+  const q = query(
+    ref,
+    where("toUid", "==", uid),
+    where("status", "==", "pending")
+  );
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const removeArr = snapshot.docs.map((doc) => {
+      return {
+        removeId: doc.id,
+        ...(doc.data() as Omit<accountBookRemovalType, "removeId">),
+      };
+    });
+    callbackFn(removeArr);
+  });
+  return unsubscribe;
+}
+
+// 監聽所選的帳簿
+export function watchSelectedAccountingBook(
+  accountBookId: string,
+  callbackFn: (book: AccountingBookType) => void
+) {
+  try {
+    const docRef = doc(firestore, "accountingBooks", accountBookId);
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        callbackFn({
+          id: snap.id,
+          ...(snap.data() as Omit<AccountingBookType, "id">),
+        });
+      }
+    });
+    return unsubscribe;
+  } catch (error) {
+    console.log("watchSelectedAccountingBook", error);
+  }
+}
+
+// 刪除指定帳簿的所有邀請資料並發送刪除請求
+export async function delAllAccountBookInvitesAndAddRemoveal(
+  accountingBookId: string,
+  ownerUid: string
+) {
+  try {
+    let allSharedMember: AccountBookRuleMemberType[] = [];
+    const rowRuleData = await getDoc(
+      doc(firestore, "accountBookRule", accountingBookId)
+    );
+    if (rowRuleData.exists()) {
+      const rule = rowRuleData.data() as AccountBookRuleType;
+      allSharedMember = rule.bookMember.filter(
+        (member) => member.uid !== rule.bookOwnerUid
+      );
+    }
+    const rowAllInvites = await Promise.all(
+      allSharedMember.map(async (memberObj) => {
+        const collectionRef = collection(firestore, "accountBookInvites");
+        const q = query(
+          collectionRef,
+          where("accountingBookId", "==", accountingBookId),
+          where("fromUid", "==", ownerUid),
+          where("toUid", "==", memberObj.uid)
+        );
+        const snaps = await getDocs(q);
+        const invitesDataArr = snaps.docs.map((doc) => {
+          return {
+            invitesId: doc.id,
+            ...(doc.data() as Omit<accountBookInvitesType, "invitesId">),
+          };
+        });
+        return invitesDataArr as accountBookInvitesType[];
+      })
+    );
+    const allInvites: accountBookInvitesType[] = rowAllInvites.flat();
+
+    await runTransaction(firestore, async (transaction) => {
+      for (const invite of allInvites) {
+        const docRef = doc(
+          firestore,
+          "accountBookInvites",
+          invite.invitesId
+        );
+        transaction.delete(docRef);
+      }
+
+      for (const memberObj of allSharedMember) {
+        const docRef = doc(collection(firestore, "accountBookRemovals"));
+        transaction.set(docRef, {
+          fromUid: ownerUid,
+          toUid: memberObj.uid,
+          accountingBookId: accountingBookId,
+          status: "pending",
+          accountingBookName: accountingBookId,
+          createTime: serverTimestamp(),
+        });
+      }
+    });
+    return true;
+  } catch (error) {
+    console.log("delAllAccountBookInvites", error);
+    return false;
+  }
 }

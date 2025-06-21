@@ -36,8 +36,8 @@ export default function IndexHeader() {
           {userData.user ? (
             <ul className="flex items-center">
               <li>
-                <Link href="/record" className="block px-4 py-2 me-3">
-                  記帳
+                <Link href="/accountingBook" className="block px-4 py-2 me-3">
+                  帳簿
                 </Link>
               </li>
               <li>
