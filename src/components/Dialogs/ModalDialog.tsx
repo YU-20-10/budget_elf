@@ -37,7 +37,7 @@ export default function ModalDialog({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`block border border-primary rounded-xl p-3 overflow-hidden ${
+        className={`block border border-primary rounded-xl p-3 overflow-hidden cursor-pointer hover:border-black ${
           full ? "w-full" : ""
         } ${minWidth ? "min-w-[120px]" : ""}`}
       >

@@ -51,13 +51,13 @@ export default function IndexHeader() {
               <li>
                 <Link
                   href="/signIn"
-                  className="block px-4 py-2 me-3"
+                  className="block px-4 py-2 me-3 rounded-xl hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
                 >
                   登入
                 </Link>
               </li>
               <li>
-                <Link href="/signUp" className="block px-4 py-2 rounded-xl text-white bg-secondary">
+                <Link href="/signUp" className="block px-4 py-2 rounded-xl text-white bg-secondary hover:bg-primary hover:font-bold">
                   註冊
                 </Link>
               </li>

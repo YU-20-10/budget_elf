@@ -217,14 +217,14 @@ export default function Record() {
         <div className="flex justify-around">
           <button
             type="button"
-            className="block border px-4 py-3 rounded-xl"
+            className="block border px-4 py-3 rounded-xl cursor-pointer hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
             onClick={() => setAlertMessageIsOpen(false)}
           >
             取消
           </button>
           <button
             type="button"
-            className="block bg-primary px-4 py-3 rounded-xl"
+            className="block bg-secondary text-white px-4 py-3 rounded-xl cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
             onClick={confirmDelRecord}
           >
             確認
@@ -373,10 +373,13 @@ export default function Record() {
         <div>
           <ul className="mb-10">
             {allAccountBook.map((book) => (
-              <li className="border rounded-xl mb-2" key={book.id}>
+              <li
+                className="border rounded-xl mb-2 hover:border-primary"
+                key={book.id}
+              >
                 <button
                   type="button"
-                  className={`block w-full p-3 rounded-xl ${
+                  className={`block w-full p-3 rounded-xl cursor-pointer ${
                     selectedAccountingBook?.id === book.id
                       ? `bg-primary text-white`
                       : `bg-white`
@@ -426,7 +429,7 @@ export default function Record() {
             onClick={() => {
               router.push("/accountingBook");
             }}
-            className="flex justify-center items-center border border-primary rounded-xl p-3 overflow-hidden min-w-[120px]"
+            className="flex justify-center items-center border border-primary rounded-xl p-3 overflow-hidden min-w-[120px] cursor-pointer hover:bg-primary hover:text-black focus:bg-primary focus:text-black"
           >
             <i className="bi bi-arrow-left-circle-fill text-2xl text-secondary hover:text-black focus:text-black pe-2"></i>
             返回
@@ -506,7 +509,7 @@ export default function Record() {
             <div className="grow flex items-end">
               <button
                 type="button"
-                className="block w-full bg-secondary text-white rounded-xl p-3"
+                className="block w-full bg-secondary text-white rounded-xl p-3 cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
                 onClick={recordSubmitHandler}
               >
                 送出
@@ -530,7 +533,10 @@ export default function Record() {
                             "icon"
                           ];
                           return (
-                            <div key={record.id} className="mt-3 my-4">
+                            <div
+                              key={record.id}
+                              className="mt-3 my-4 hover:border focus:border rounded-lg"
+                            >
                               {/* <CardModalDialog
                                 isOpen={cardModalIsOpen}
                                 setIsOpen={setCardModalIsOpen}
