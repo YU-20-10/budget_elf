@@ -35,7 +35,17 @@ export const defaultExpenseSubCategory = {
     },
   ],
   醫療: [{ name: "返回", icon: "/icon/replay_dark_icon.svg" }],
-  居住: [{ name: "返回", icon: "/icon/replay_dark_icon.svg" }],
+  居住: [
+    { name: "返回", icon: "/icon/replay_dark_icon.svg" },
+    {
+      name: "水費",
+      icon: "/icon/water_drop_dark_icon.svg",
+    },
+    {
+      name: "電費",
+      icon: "/icon/electric_bolt_dark_icon.svg",
+    },
+  ],
   手機網路: [{ name: "返回", icon: "/icon/replay_dark_icon.svg" }],
   家庭: [{ name: "返回", icon: "/icon/replay_dark_icon.svg" }],
 };

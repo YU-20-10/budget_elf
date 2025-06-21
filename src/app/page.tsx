@@ -1,4 +1,78 @@
-// import Image from "next/image";
+import Image from "next/image";
+import AutoPlaySwiper from "@/components/Swiper/AutoPlaySwiper";
+
+const swiperSlideArr = [
+  <div key="slide1" className="h-64 lg:h-100">
+    <h3 className="text-center text-xl font-bold text-white mb-4">
+      登入或註冊後開始使用
+    </h3>
+    <div className="relative w-full h-full">
+      <Image
+        src="/gif/login.gif"
+        alt="login.gif"
+        fill
+        unoptimized
+        style={{ objectFit: "contain" }}
+      ></Image>
+    </div>
+  </div>,
+  <div key="slide2" className="h-64 lg:h-100">
+    <h3 className="text-center text-xl font-bold text-white mb-4">
+      在帳簿管理中點擊新增帳簿
+    </h3>
+    <div className="relative w-full h-full">
+      <Image
+        src="/gif/addAccountingBook.gif"
+        alt="addAccountingBook.gif"
+        fill
+        unoptimized
+        style={{ objectFit: "contain" }}
+      ></Image>
+    </div>
+  </div>,
+  <div key="slide3" className="h-64 lg:h-100">
+    <h3 className="text-center text-xl font-bold text-white mb-4">
+      點擊前往記帳開始使用
+    </h3>
+    <div className="relative w-full h-full">
+      <Image
+        src="/gif/addAccountingRecord.gif"
+        alt="addAccountingRecord.gif"
+        fill
+        unoptimized
+        style={{ objectFit: "contain" }}
+      ></Image>
+    </div>
+  </div>,
+  <div key="slide3" className="h-64 lg:h-100">
+    <h3 className="text-center text-xl font-bold text-white mb-4">
+      點選共用設定邀請其他使用者
+    </h3>
+    <div className="relative w-full h-full">
+      <Image
+        src="/gif/addShareInvite.gif"
+        alt="addShareInvite.gif"
+        fill
+        unoptimized
+        style={{ objectFit: "contain" }}
+      ></Image>
+    </div>
+  </div>,
+  <div key="slide3" className="h-64 lg:h-100">
+    <h3 className="text-center text-xl font-bold text-white mb-4">
+      被邀請人選擇接受邀請後開始記帳
+    </h3>
+    <div className="relative w-full h-full">
+      <Image
+        src="/gif/acceptInvite.gif"
+        alt="acceptInvite.gif"
+        fill
+        unoptimized
+        style={{ objectFit: "contain" }}
+      ></Image>
+    </div>
+  </div>,
+];
 
 export default function Home() {
   return (
@@ -58,6 +132,11 @@ export default function Home() {
               </div>
             </div> */}
           </div>
+        </div>
+      </section>
+      <section className="flex justify-center w-full bg-secondary py-6 lg:py-10">
+        <div className="container max-w-7xl px-4 flex justify-center">
+          <AutoPlaySwiper swiperSlideArr={swiperSlideArr}></AutoPlaySwiper>
         </div>
       </section>
     </main>
