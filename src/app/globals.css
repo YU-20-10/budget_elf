@@ -1,4 +1,7 @@
 @import "react-day-picker/style.css";
+@import 'swiper/css';
+@import 'swiper/css/pagination';
+@import 'swiper/css/navigation';
 @config "../../tailwind.config.mjs";
 @import "tailwindcss";
 
