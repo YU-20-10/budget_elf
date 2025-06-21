@@ -79,7 +79,7 @@ export default function CardModalDialog({
           </div>
           <div className={`${haveBtn ? "flex" : "hidden"} justify-end`}>
             <button
-              className="border rounded-xl px-3 py-2 me-3"
+              className="border rounded-xl px-3 py-2 me-3 cursor-pointer hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
               onClick={delBtnClickHandler}
             >
               刪除

@@ -297,14 +297,14 @@ export default function AccountingBook() {
           <div className="flex justify-around">
             <button
               type="button"
-              className="block w-1/3 border py-2 px-3 rounded-xl"
+              className="block w-1/3 border py-2 px-3 rounded-xl cursor-pointer hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
               onClick={() => setAlertMessageIsOpen(false)}
             >
               取消
             </button>
             <button
               type="button"
-              className="block w-1/3 bg-primary py-2 px-3 rounded-xl"
+              className="block w-1/3 bg-secondary py-2 px-3 rounded-xl text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
               onClick={() =>
                 confirmTodelBtnClickHandler(
                   activeShareBook.id,
@@ -542,14 +542,14 @@ export default function AccountingBook() {
         <div className="flex justify-around">
           <button
             type="button"
-            className="block border py-2 px-3 rounded-xl"
+            className="block border py-2 px-3 rounded-xl cursor-pointer hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
             onClick={() => setAlertMessageIsOpen(false)}
           >
             取消
           </button>
           <button
             type="button"
-            className="block bg-primary py-2 px-3 rounded-xl"
+            className="block bg-secondary py-2 px-3 rounded-xl text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
             onClick={() => comfirmDelAccountBook()}
           >
             確認
@@ -585,7 +585,7 @@ export default function AccountingBook() {
               >
                 <Menu>
                   <MenuButton
-                    className="focus-visible:outline-none focus-visible:ring-0"
+                    className="focus-visible:outline-none focus-visible:ring-0 cursor-pointer hover:outline"
                     data-accountingbookid={book.id}
                     onClick={() => setSelectedAccountingBook(book)}
                   >
@@ -594,7 +594,7 @@ export default function AccountingBook() {
                   <MenuItems
                     transition
                     anchor={{ to: "top", offset: 24 }}
-                    className="origin-top transition duration-200 ease-out data-closed:scale-95 data-closed:opacity-0 bg-white px-3 py-2 focus-visible:outline-none focus-visible:ring-0"
+                    className="origin-top transition duration-200 ease-out data-closed:scale-95 data-closed:opacity-0 bg-white focus-visible:outline-none focus-visible:ring-0"
                   >
                     <MenuItem
                       as="div"
@@ -604,10 +604,10 @@ export default function AccountingBook() {
                       }}
                     >
                       <button
-                        className={`block ${
+                        className={`block px-3 py-2 ${
                           user?.uid !== book.bookOwnerUid
                             ? "text-gray-300 cursor-not-allowed"
-                            : ""
+                            : "cursor-pointer hover:bg-primary hover:font-bold hover:text-white"
                         }`}
                         disabled={user?.uid !== book.bookOwnerUid}
                         onClick={clickDelAccountBookHandler}
@@ -828,7 +828,7 @@ export default function AccountingBook() {
                 </div>
                 <div className="flex justify-center">
                   <button
-                    className="block bg-secondary text-white rounded-xl py-2 px-3 w-full"
+                    className="block bg-secondary text-white rounded-xl py-2 px-3 w-full cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
                     onClick={shareBtnClickHandler}
                   >
                     加入共用
@@ -854,7 +854,7 @@ export default function AccountingBook() {
                 </div>
                 <div className="flex justify-center">
                   <button
-                    className="block bg-secondary text-white rounded-xl py-2 px-3 w-full"
+                    className="block bg-secondary text-white rounded-xl py-2 px-3 w-full cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
                     onClick={removeBtnClickHandler}
                   >
                     解除共用
@@ -949,12 +949,12 @@ export default function AccountingBook() {
       <div className="flex justify-end">
         <button
           onClick={() => setAddBookOpen(false)}
-          className="block border py-3 px-5 rounded-xl me-3"
+          className="block border py-3 px-5 rounded-xl me-3 cursor-pointer hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
         >
           取消
         </button>
         <button
-          className="block border py-3 px-5 rounded-xl bg-secondary text-white"
+          className="block border py-3 px-5 rounded-xl bg-secondary text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
           onClick={addBookClickHandler}
         >
           新增
@@ -975,7 +975,7 @@ export default function AccountingBook() {
           <button
             type="button"
             onClick={() => setAddBookOpen(true)}
-            className="block border border-primary rounded-xl p-3 overflow-hidden min-w-[120px] min-h-[58px]"
+            className="block border border-primary rounded-xl p-3 overflow-hidden min-w-[120px] min-h-[58px] cursor-pointer hover:bg-primary hover:text-bold focus:bg-primary hover:text-bold"
           >
             新增帳簿
           </button>

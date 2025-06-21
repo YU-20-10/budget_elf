@@ -49,7 +49,7 @@ export default function RecordCalendar({
         months: "flex w-full justify-center",
         month: "w-full",
         month_grid: "w-full",
-        day_button: "mx-auto",
+        day_button: "mx-auto cursor-pointer",
         caption_label: "align-top",
       }}
       modifiers={modifiers}
