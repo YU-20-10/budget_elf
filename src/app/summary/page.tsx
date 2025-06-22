@@ -191,14 +191,22 @@ export default function Summary() {
 
     let sortedAllRecord: AccountingRecordWithIdAndBookIdType[] = [];
     if (selectedFilter === "依月分檢視") {
-      sortedAllRecord = allRecordRow.filter((recordObj) => {
-        if (recordObj.transactionDate instanceof Date) {
-          const year = new Date(recordObj.transactionDate).getFullYear();
-          const month = new Date(recordObj.transactionDate).getMonth();
-          return year === selectYear && month === selectMonth;
-        }
-        return false;
-      });
+      sortedAllRecord = allRecordRow
+        .filter((recordObj) => {
+          if (recordObj.transactionDate instanceof Date) {
+            const year = new Date(recordObj.transactionDate).getFullYear();
+            const month = new Date(recordObj.transactionDate).getMonth();
+            return year === selectYear && month === selectMonth;
+          }
+          return false;
+        })
+        .sort((a, b) => {
+          const timeA =
+            a.transactionDate instanceof Date ? a.transactionDate.getTime() : 0;
+          const timeB =
+            b.transactionDate instanceof Date ? b.transactionDate.getTime() : 0;
+          return timeB - timeA;
+        });
     } else if (selectedFilter === "依日期檢視") {
       sortedAllRecord = allRecordRow.filter((recordObj) => {
         if (recordObj.transactionDate instanceof Date) {
@@ -214,8 +222,11 @@ export default function Summary() {
     }
 
     setTotalAmount(countTotalAmount(sortedAllRecord));
-
-    setAllRecordSortByCategory(allCategoryAmount(sortedAllRecord)); // 名稱要改
+    setAllRecordSortByCategory(
+      allCategoryAmount(
+        sortedAllRecord.filter((record) => record.categoryType === "支出")
+      )
+    ); // 名稱要改
     setAllRecordSortByDate(recordsSortByDate(sortedAllRecord));
   }, [selectedDate, allRecordRow, selectedFilter]);
   useEffect(() => {
