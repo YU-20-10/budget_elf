@@ -1,22 +1,29 @@
+"use client";
+
+import { useState, ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-
 import { useRouter } from "next/navigation";
-// import { useRouter } from "next/router";
-
-import useAuth from "@/hooks/useAuth";
 import { userSignOut } from "@/lib/firebase/firebaseAuth";
+import useAuth from "@/hooks/useAuth";
+import MessageModalDialog from "@/components/Dialogs/MessageModalDialog";
 
 export default function IndexHeader() {
   const userData = useAuth();
   const router = useRouter();
+  const [alertMessageIsOpen, setAlertMessageIsOpen] = useState<boolean>(false);
+  const [alertMessageContent, setAlertMessageContent] = useState<ReactNode>(
+    <></>
+  );
   async function signOutClickHandler() {
     try {
       await userSignOut();
-      alert("登出成功");
+      setAlertMessageContent(<p className="text-lg">登出成功</p>);
+      setAlertMessageIsOpen(true);
       router.push("/");
     } catch (error) {
-      alert(`登出失敗,${error}`);
+      setAlertMessageContent(<p className="text-lg">{`登出失敗,${error}`}</p>);
+      setAlertMessageIsOpen(true);
     }
   }
   return (
@@ -41,7 +48,10 @@ export default function IndexHeader() {
                 </Link>
               </li>
               <li>
-                <button className="px-4 py-2 cursor-pointer" onClick={signOutClickHandler}>
+                <button
+                  className="px-4 py-2 cursor-pointer"
+                  onClick={signOutClickHandler}
+                >
                   登出
                 </button>
               </li>
@@ -51,13 +61,16 @@ export default function IndexHeader() {
               <li>
                 <Link
                   href="/signIn"
-                  className="block px-4 py-2 me-3 rounded-xl hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
+                  className="block px-4 py-2 me-3 rounded-xl hover:bg-primary hover:text-white hover:font-bold"
                 >
                   登入
                 </Link>
               </li>
               <li>
-                <Link href="/signUp" className="block px-4 py-2 rounded-xl text-white bg-secondary hover:bg-primary hover:font-bold">
+                <Link
+                  href="/signUp"
+                  className="block px-4 py-2 rounded-xl text-white bg-secondary hover:bg-primary hover:font-bold"
+                >
                   註冊
                 </Link>
               </li>
@@ -65,6 +78,17 @@ export default function IndexHeader() {
           )}
         </div>
       </div>
+      <MessageModalDialog
+        isOpen={alertMessageIsOpen}
+        setIsOpen={setAlertMessageIsOpen}
+        title=""
+        content={
+          <div className="min-h-25 flex justify-center items-center">
+            {alertMessageContent}
+          </div>
+        }
+        withConfirmBtn={true}
+      ></MessageModalDialog>
     </header>
   );
 }

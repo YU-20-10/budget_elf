@@ -83,7 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let unsubscribe: () => void;
     if (id) {
       unsubscribe = watchAccountBookInvites(id, (invitesArr) => {
-        console.log("invitesArr", invitesArr);
         setInvitesData(invitesArr);
       });
     }
@@ -98,7 +97,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let unsubscribe: () => void;
     if (uid) {
       unsubscribe = watchAccountBookRemoval(uid, (removals) => {
-        console.log("removeArr", removals);
         setRemovalData(removals);
       });
     }

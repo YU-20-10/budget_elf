@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -8,10 +8,8 @@ import {
   emailCheck,
   passwordCheck,
 } from "@/lib/inputCheck";
-// import { authSignUp } from "@/lib//firebase/firebaseAuth";
 import { userSignUp } from "@/lib/user/userFunctions";
-// import useAuth from "@/hooks/useAuth";
-
+import MessageModalDialog from "@/components/Dialogs/MessageModalDialog";
 
 type SignUpInputData = {
   signUpUserName: string;
@@ -29,7 +27,10 @@ export default function SignUp() {
     {}
   );
   const router = useRouter();
-  // const user = useAuth();
+  const [alertMessageIsOpen, setAlertMessageIsOpen] = useState<boolean>(false);
+  const [alertMessageContent, setAlertMessageContent] = useState<ReactNode>(
+    <></>
+  );
 
   function changeHandler(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
@@ -51,38 +52,39 @@ export default function SignUp() {
     setErrorMessage((prev) => ({ ...prev, [name]: error }));
   }
 
-  // e:React.MouseEvent<HTMLButtonElement>
   async function clickHandler() {
     if (
       errorMessage.signUpUserName ||
       errorMessage.signUpEmail ||
       errorMessage.signUpPassword
     ) {
-      alert("請確認每個欄位是否都有填寫正確");
+      setAlertMessageContent(
+        <p className="text-lg">請確認每個欄位是否都有填寫正確</p>
+      );
+      setAlertMessageIsOpen(true);
       return;
     }
     try {
-
       const userDoc = await userSignUp(
         signUpInputData.signUpUserName,
         signUpInputData.signUpEmail,
         signUpInputData.signUpPassword
       );
-      console.log(userDoc);
       if (userDoc) {
-        alert("註冊成功");
+        setAlertMessageContent(<p className="text-lg">註冊成功</p>);
+        setAlertMessageIsOpen(true);
         router.push("/accountingBook");
       } else {
-        alert("註冊失敗");
+        setAlertMessageContent(
+          <p className="text-lg">註冊失敗，請稍候再試一次</p>
+        );
+        setAlertMessageIsOpen(true);
       }
     } catch (error) {
-      alert(`註冊失敗,${error}`);
+      setAlertMessageContent(<p className="text-lg">{`註冊失敗,${error}`}</p>);
+      setAlertMessageIsOpen(true);
     }
   }
-
-  useEffect(() => {
-    // console.log(signUpInputData);
-  }, [signUpInputData]);
 
   return (
     <main className="flex justify-center h-[calc(100vh-80px)] bg-primary overflow-hidden relative z-1">
@@ -155,6 +157,17 @@ export default function SignUp() {
         <div className="absolute bottom-[-380px] lg:bottom-[-250px]  left-[-150px] h-[500px] w-[500px] bg-[#6A717B] rounded-[50%] -z-1"></div>
         <div className="absolute top-[-310px] lg:top-[-200px] right-[-150px] h-[400px] w-[400px] bg-[#E0E3E8] rounded-[50%] -z-1"></div>
       </div>
+      <MessageModalDialog
+        isOpen={alertMessageIsOpen}
+        setIsOpen={setAlertMessageIsOpen}
+        title=""
+        content={
+          <div className="min-h-25 flex justify-center items-center">
+            {alertMessageContent}
+          </div>
+        }
+        withConfirmBtn={true}
+      ></MessageModalDialog>
     </main>
   );
 }

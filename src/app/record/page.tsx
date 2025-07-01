@@ -368,7 +368,6 @@ export default function Record() {
 
   useEffect(() => {
     if (allAccountBook.length > 0) {
-      // console.log(allAccountBook);
       setModalContent(
         <div>
           <ul className="mb-10">
