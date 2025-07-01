@@ -29,7 +29,9 @@ export default function MessageModalDialog({
   content,
   withConfirmBtn = false,
   withCancelBtn = false,
-  confirmBtnHandler,
+  confirmBtnHandler = () => {
+    setIsOpen(false);
+  },
 }: MessageModalDialogProps) {
   return (
     <div>
@@ -37,7 +39,7 @@ export default function MessageModalDialog({
         open={isOpen}
         onClose={onCloseHandler}
         transition
-        className="fixed inset-0 flex w-screen items-center justify-center bg-black/30 p-4 transition duration-300 ease-out data-closed:opacity-0"
+        className="fixed inset-0 flex w-screen items-center justify-center bg-black/30 p-4 transition duration-300 ease-out data-closed:opacity-0 z-3"
       >
         <DialogPanel className="max-w-lg min-w-2xs md:min-w-md space-y-4 bg-white p-6 lg:p-10 rounded-xl lg:max-h-5/6 overflow-auto">
           <DialogTitle className="font-bold">{title}</DialogTitle>
@@ -56,7 +58,7 @@ export default function MessageModalDialog({
             )}
             {withConfirmBtn ? (
               <button
-                className="border rounded-xl px-5 py-2"
+                className="border rounded-xl px-5 py-2 cursor-pointer hover:bg-primary hover:text-bold hover:border-primary"
                 onClick={(event) => {
                   confirmBtnHandler?.(event);
                 }}

@@ -7,12 +7,8 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-// import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  // Popover,
-  // PopoverButton,
-  // PopoverPanel,
   Tab,
   TabGroup,
   TabList,
@@ -30,7 +26,6 @@ import MessageModalDialog from "@/components/Dialogs/MessageModalDialog";
 import {
   AccountingBookType,
   accountBookInvitesType,
-  // accountBookRemovalType,
   AccountBookRuleType,
 } from "@/types/AccountingBookType";
 import {
@@ -44,7 +39,6 @@ import {
   getUserDataByEmail,
   delUserAbleAccountBook,
   updateAccountBookRuleRemoveMember,
-  // watchAccountBookRemoval,
   updateAccountBookRemoval,
   addAccountBookRemoval,
   getAccountBookInvites,
@@ -54,7 +48,6 @@ import {
   delAllAccountBook,
   delAllAccountingRecord,
   delAllAccountBookInvitesAndAddRemoveal,
-  // setUserAbleAccountBookandUpdateThisName,
 } from "@/lib/firebase/firestore";
 import { emailCheck } from "@/lib/inputCheck";
 
@@ -133,17 +126,24 @@ export default function AccountingBook() {
     // setShareUid("");
     const userEmail = user?.email;
     if (!shareEmailInput || userEmail === shareEmailInput) {
-      alert("請輸入要邀請共用的email");
+      setAlertMessageContent(
+        <p className="text-lg">請輸入要邀請共用的email</p>
+      );
+      setAlertMessageIsOpen(true);
       return;
     }
     const check = emailCheck(shareEmailInput);
     if (!check) {
-      alert("email格式錯誤");
+      setAlertMessageContent(<p className="text-lg">email格式錯誤</p>);
+      setAlertMessageIsOpen(true);
       return;
     } else {
       const otherUserData = await getUserDataByEmail(shareEmailInput);
       if (!otherUserData) {
-        alert("使用者email有誤，查無資料");
+        setAlertMessageContent(
+          <p className="text-lg">使用者email有誤，查無資料</p>
+        );
+        setAlertMessageIsOpen(true);
         return;
       } else {
         return otherUserData.id;
@@ -171,10 +171,13 @@ export default function AccountingBook() {
       );
       if (addInvitesResult && updareRuleResult) {
         setShareDialogIsOpen(false);
-        setAlertMessageContent(<p>邀請成功</p>);
+        setAlertMessageContent(<p className="text-lg">邀請成功</p>);
         setAlertMessageIsOpen(true);
       } else {
-        alert("出了一點問題，邀請失敗了");
+        setAlertMessageContent(
+          <p className="text-lg">出了一點問題，邀請失敗，請稍後再試</p>
+        );
+        setAlertMessageIsOpen(true);
       }
     }
   }, [activeShareBook, user?.uid, shareEmailCheck]);
@@ -182,20 +185,23 @@ export default function AccountingBook() {
   const removeEamilCheckAndGetUid = useCallback(async () => {
     const userEmail = user?.email;
     if (!removeEmailInput || userEmail === removeEmailInput) {
-      setAlertMessageContent(<p>請輸入要解除共用的email</p>);
+      setAlertMessageContent(
+        <p className="text-lg">請輸入要解除共用的email</p>
+      );
       setAlertMessageIsOpen(true);
       return;
     }
     const check = emailCheck(removeEmailInput);
     if (!check) {
-      setAlertMessageContent(<p>email格式錯誤</p>);
+      setAlertMessageContent(<p className="text-lg">email格式錯誤</p>);
       setAlertMessageIsOpen(true);
       return;
     } else {
       const otherUserData = await getUserDataByEmail(removeEmailInput);
-      // console.log("otherUserData", otherUserData);
       if (!otherUserData) {
-        setAlertMessageContent(<p>使用者email有誤，查無資料</p>);
+        setAlertMessageContent(
+          <p className="text-lg">使用者email有誤，查無資料</p>
+        );
         setAlertMessageIsOpen(true);
         return;
       } else {
@@ -217,7 +223,6 @@ export default function AccountingBook() {
         uid,
         delMemberUid
       );
-      // console.log(invitesDataArr);
       if (invitesDataArr === false || invitesDataArr.length === 0) return;
 
       const rowDelInvitesResults = await Promise.allSettled(
@@ -251,19 +256,18 @@ export default function AccountingBook() {
         accountBookId,
         accountBookName
       );
-      // console.log("addRemovalResult", addRemovalResult);
 
       if (
         delInvitesResults["success"].length === invitesDataArr.length &&
         ruleRemoveMemberResult &&
         addRemovalResult
       ) {
-        setAlertMessageContent(<p>已成功將共用者移除</p>);
+        setAlertMessageContent(<p className="text-lg">已成功將共用者移除</p>);
         setShareDialogIsOpen(false);
         setAlertMessageIsOpen(true);
         return;
       } else {
-        setAlertMessageContent(<p>出了一點小錯誤</p>);
+        setAlertMessageContent(<p className="text-lg">出了一點小錯誤</p>);
         setAlertMessageIsOpen(true);
         return;
       }
@@ -282,12 +286,14 @@ export default function AccountingBook() {
       (member) => member.uid === otherUserData.id
     );
     if (!isUserExist) {
-      setAlertMessageContent(<p>該使用者並未共用此本帳簿</p>);
+      setAlertMessageContent(
+        <p className="text-lg">該使用者並未共用此本帳簿</p>
+      );
       setAlertMessageIsOpen(true);
     } else {
       setAlertMessageContent(
         <div>
-          <p className="mb-6">
+          <p className="mb-6 text-lg">
             是否確認將
             {activeShareBook.displayNames?.[otherUserData.id]
               ? activeShareBook.displayNames?.[otherUserData.id]
@@ -297,14 +303,14 @@ export default function AccountingBook() {
           <div className="flex justify-around">
             <button
               type="button"
-              className="block w-1/3 border py-2 px-3 rounded-xl cursor-pointer hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
+              className="block w-1/3 border py-2 px-3 rounded-xl cursor-pointer hover:bg-primary hover:text-white hover:font-bold"
               onClick={() => setAlertMessageIsOpen(false)}
             >
               取消
             </button>
             <button
               type="button"
-              className="block w-1/3 bg-secondary py-2 px-3 rounded-xl text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
+              className="block w-1/3 bg-secondary py-2 px-3 rounded-xl text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary"
               onClick={() =>
                 confirmTodelBtnClickHandler(
                   activeShareBook.id,
@@ -324,7 +330,10 @@ export default function AccountingBook() {
 
   async function editDialogClickHandler() {
     if (!accountBookThisName) {
-      alert("尚未輸入帳簿中要使用的稱呼");
+      setAlertMessageContent(
+        <p className="text-lg">尚未輸入帳簿中要使用的稱呼</p>
+      );
+      setAlertMessageIsOpen(true);
       return;
     }
     if (user?.uid && activeEditBook?.id) {
@@ -336,10 +345,16 @@ export default function AccountingBook() {
         );
 
       if (updateAccountBookDisplayNameResult) {
-        alert("已成功設定帳簿內的顯示名稱~");
+        setAlertMessageContent(
+          <p className="text-lg">已成功設定帳簿內的顯示名稱</p>
+        );
+        setAlertMessageIsOpen(true);
         setSettingThisNameIsOpen(false);
       } else {
-        alert("似乎出了一點錯誤....");
+        setAlertMessageContent(
+          <p className="text-lg">已似乎出了一點錯誤，請稍候再試一次</p>
+        );
+        setAlertMessageIsOpen(true);
       }
     }
   }
@@ -357,17 +372,22 @@ export default function AccountingBook() {
       );
 
       if (setUserAbleAccountBookResult) {
-        setAlertMessageContent(<p>已接受邀請</p>);
+        setAlertMessageContent(<p className="text-lg">已接受邀請</p>);
         setAlertMessageIsOpen(true);
         setSettingThisNameIsOpen(true);
       } else {
-        alert("似乎出了一點錯誤....");
+        setAlertMessageContent(
+          <p className="text-lg">已似乎出了一點錯誤，請稍候再試一次</p>
+        );
+        setAlertMessageIsOpen(true);
       }
     }
   }
   async function thisNameClickHandler() {
     if (!accountBookThisName) {
-      setAlertMessageContent(<p>尚未輸入帳簿中要使用的稱呼</p>);
+      setAlertMessageContent(
+        <p className="text-lg">尚未輸入帳簿中要使用的稱呼</p>
+      );
       setAlertMessageIsOpen(true);
       return;
     }
@@ -380,18 +400,23 @@ export default function AccountingBook() {
         );
 
       if (updateAccountBookDisplayNameResult) {
-        setAlertMessageContent(<p>已成功設定帳簿內的顯示名稱~</p>);
+        setAlertMessageContent(
+          <p className="text-lg">已成功設定帳簿內的顯示名稱~</p>
+        );
         setSettingThisNameIsOpen(false);
         setAlertMessageIsOpen(true);
       } else {
-        alert("似乎出了一點錯誤....");
+        setAlertMessageContent(
+          <p className="text-lg">已似乎出了一點錯誤，請稍候再試一次</p>
+        );
+        setAlertMessageIsOpen(true);
       }
     }
   }
 
   async function addBookClickHandler() {
     if (!addBookNameInput || !user?.uid) {
-      setAlertMessageContent(<p>資料未填寫完整</p>);
+      setAlertMessageContent(<p className="text-lg">資料未填寫完整</p>);
       setAlertMessageIsOpen(true);
       return;
     }
@@ -421,7 +446,7 @@ export default function AccountingBook() {
     };
     setAccountBookRule(doc.id, setAccountBookRuleInput);
     setAddBookOpen(false);
-    setAlertMessageContent(<p>新增成功</p>);
+    setAlertMessageContent(<p className="text-lg">新增成功</p>);
     setAlertMessageIsOpen(true);
   }
 
@@ -450,7 +475,6 @@ export default function AccountingBook() {
         for (const rowResult of results) {
           if (rowResult.status === "fulfilled") {
             const { result, removal } = rowResult.value;
-            // console.log(result, removal);
             if (result) {
               await updateAccountBookRemoval(removal.removeId, "done");
             }
@@ -522,34 +546,33 @@ export default function AccountingBook() {
       delAccountingBookResult
     ) {
       setAlertMessageIsOpen(false);
-      setAlertMessageContent(<p>刪除成功</p>);
+      setAlertMessageContent(<p className="text-lg">刪除成功</p>);
       setAlertMessageIsOpen(true);
     } else {
       setAlertMessageIsOpen(false);
-      setAlertMessageContent(<p>出了一點錯誤請稍後再試</p>);
+      setAlertMessageContent(<p className="text-lg">出了一點錯誤請稍後再試</p>);
       setAlertMessageIsOpen(true);
     }
   }, [selectedAccountingBook, user?.uid]);
 
   const clickDelAccountBookHandler = useCallback(async () => {
-    // console.log(selectedAccountingBook);
     setAlertMessageContent(
       <div>
-        <p className="mb-6">
+        <p className="mb-6 text-lg">
           是否確認刪除
           <span className="font-bold">{selectedAccountingBook?.bookName}</span>?
         </p>
         <div className="flex justify-around">
           <button
             type="button"
-            className="block border py-2 px-3 rounded-xl cursor-pointer hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
+            className="block border py-2 px-3 rounded-xl cursor-pointer hover:bg-primary hover:text-white hover:font-bold"
             onClick={() => setAlertMessageIsOpen(false)}
           >
             取消
           </button>
           <button
             type="button"
-            className="block bg-secondary py-2 px-3 rounded-xl text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
+            className="block bg-secondary py-2 px-3 rounded-xl text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary"
             onClick={() => comfirmDelAccountBook()}
           >
             確認
@@ -686,7 +709,7 @@ export default function AccountingBook() {
               >
                 <div className="flex justify-center relative">
                   <button
-                    className="flex justify-center items-center p-2 bg-secondary text-white rounded-xl md:px-3 md:py-2 cursor-pointer hover:bg-primary hover:text-black focus:bg-primary focus:text-black"
+                    className="flex justify-center items-center p-2 bg-secondary text-white rounded-xl md:px-3 md:py-2 cursor-pointer hover:bg-primary hover:text-black"
                     onClick={() => {
                       setSelectedAccountingBook(book);
                       setRedirectLoading("block");
@@ -735,23 +758,6 @@ export default function AccountingBook() {
       setTabIndex(0);
     }
   }, [shareDialogIsOpen]);
-  // useEffect(() => {
-  //   console.log(redirectLoading);
-  // }, [redirectLoading]);
-  // useEffect(() => {
-  //   const uid = user?.uid;
-  //   let unsubscribe: () => void;
-  //   if (uid) {
-  //     unsubscribe = watchAccountBookRemoval(uid, (removals) => {
-  //       setRemovalData(removals);
-  //     });
-  //   }
-  //   return () => {
-  //     if (unsubscribe) {
-  //       unsubscribe();
-  //     }
-  //   };
-  // }, [userData?.user?.uid]);
   //---useEffect---
 
   //---template---
@@ -828,7 +834,7 @@ export default function AccountingBook() {
                 </div>
                 <div className="flex justify-center">
                   <button
-                    className="block bg-secondary text-white rounded-xl py-2 px-3 w-full cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
+                    className="block bg-secondary text-white rounded-xl py-2 px-3 w-full cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary"
                     onClick={shareBtnClickHandler}
                   >
                     加入共用
@@ -854,7 +860,7 @@ export default function AccountingBook() {
                 </div>
                 <div className="flex justify-center">
                   <button
-                    className="block bg-secondary text-white rounded-xl py-2 px-3 w-full cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
+                    className="block bg-secondary text-white rounded-xl py-2 px-3 w-full cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary"
                     onClick={removeBtnClickHandler}
                   >
                     解除共用
@@ -949,12 +955,12 @@ export default function AccountingBook() {
       <div className="flex justify-end">
         <button
           onClick={() => setAddBookOpen(false)}
-          className="block border py-3 px-5 rounded-xl me-3 cursor-pointer hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
+          className="block border py-3 px-5 rounded-xl me-3 cursor-pointer hover:bg-primary hover:text-white hover:font-bold"
         >
           取消
         </button>
         <button
-          className="block border py-3 px-5 rounded-xl bg-secondary text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
+          className="block border py-3 px-5 rounded-xl bg-secondary text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary"
           onClick={addBookClickHandler}
         >
           新增
@@ -975,7 +981,7 @@ export default function AccountingBook() {
           <button
             type="button"
             onClick={() => setAddBookOpen(true)}
-            className="block border border-primary rounded-xl p-3 overflow-hidden min-w-[120px] min-h-[58px] cursor-pointer hover:bg-primary hover:text-bold focus:bg-primary hover:text-bold"
+            className="block border border-primary rounded-xl p-3 overflow-hidden min-w-[120px] min-h-[58px] cursor-pointer hover:bg-primary hover:text-bold"
           >
             新增帳簿
           </button>
@@ -1100,7 +1106,6 @@ export default function AccountingBook() {
         <MessageModalDialog
           isOpen={addBookOpen}
           setIsOpen={setAddBookOpen}
-          // setParentIsOpen={setIsOpen}
           title="新增帳簿"
           content={addBookContent}
         ></MessageModalDialog>
@@ -1163,6 +1168,7 @@ export default function AccountingBook() {
               {alertMessageContent}
             </div>
           }
+          withConfirmBtn={true}
         ></MessageModalDialog>
       </div>
     </main>

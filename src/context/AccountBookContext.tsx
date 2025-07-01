@@ -16,7 +16,6 @@ import {
   AccountBookContextType,
   AccountingRecordWithIdType,
 } from "@/types/AccountingBookType";
-// import { useRouter } from "next/navigation";
 
 export const AccountBookContext = createContext<
   AccountBookContextType | undefined
@@ -93,7 +92,6 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
           );
           ableAccountBookRef.current = ableAccountBooks;
           setSharedAccountBook(ableAccountBooks);
-          // console.log(ableAccountBooks);
         })();
       }
       unsubscribe = watchUserAbleAccountBook(

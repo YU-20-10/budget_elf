@@ -20,8 +20,6 @@ export default function MainLayout({
   useEffect(() => {
     const publicRouter = ["/", "/signIn", "/signUp"];
 
-    console.log("MainLayout", userData);
-    // userData.loading須為false才驗證身分，Firebase 的 onAuthStateChanged() 是 非同步
     if (userData.loading) return;
     
     if (!userData.user && !publicRouter.includes(path)) {

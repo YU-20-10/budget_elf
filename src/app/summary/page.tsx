@@ -147,13 +147,11 @@ export default function Summary() {
   //---function---
   function filterDateChangeHandler(date: Date) {
     setSelectedDate(date);
-    // console.log(date);
   }
   //---function---
 
   //---useEffec---
   useEffect(() => {
-    // console.log(allAccountBook);
     const allAccountBookArr = allAccountBook.map((book) => book.id);
     const allAccountBookNameObj = allAccountBook.reduce((acc, value) => {
       acc[value.id] = value.bookName;
@@ -177,8 +175,6 @@ export default function Summary() {
             : "";
         })
       );
-
-      // console.log(allRecord);
 
       setRecordedDate(allRecordDate);
     })();

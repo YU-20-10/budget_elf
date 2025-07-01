@@ -8,24 +8,6 @@ export default function BottonMenu() {
     <div className="fixed lg:sticky bottom-0 right-0 left-0 lg:right-auto lg:top-0 bg-primary z-3">
       <div className="lg:min-h-screen lg:h-full">
         <div className="flex lg:flex-col w-full h-full">
-          {/* <h1 className="lg:p-6 flex items-center">
-            <Link href="/" className="block">
-              <Image
-                src="/budget_elf_logo_withtext.svg"
-                alt="budget_elf_logo"
-                className="hidden lg:block"
-                width={180}
-                height={30}
-              ></Image>
-              <Image
-                src="/budget_elf_logo_5.svg"
-                alt="budget_elf_logo_sm"
-                className="lg:hidden"
-                width={72}
-                height={72}
-              ></Image>
-            </Link>
-          </h1> */}
           <ul className="flex justify-around items-center lg:items-start lg:flex-col h-full w-full">
             <li className="lg:px-6">
               <h1 className="flex items-center">
@@ -104,22 +86,11 @@ export default function BottonMenu() {
                   className="flex flex-col lg:flex-row items-center p-3 lg:py-4 cursor-pointer"
                 >
                   <i className="bi bi-gear text-4xl lg:text-2xl lg:me-4"></i>
-                  <span className="text-xs lg:text-base py-1">設定</span>
+                  <span className="text-xs lg:text-base py-1 text-center min-w-12">設定</span>
                 </Link>
               </div>
             </li>
           </ul>
-          {/* <div className="lg:grow lg:flex lg:items-end">
-            <Link href="" className="flex items-center">
-              <Image
-                src="/userSetting_icon.svg"
-                alt="analytics_icon"
-                width={24}
-                height={24}
-              ></Image>
-              <span>使用者設定</span>
-            </Link>
-          </div> */}
         </div>
       </div>
     </div>

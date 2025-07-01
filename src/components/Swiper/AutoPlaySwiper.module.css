@@ -1,0 +1,3 @@
+.autoPlaySwiper :global(.swiper-pagination-bullet-active) {
+  background: #7BAAD8;
+}
