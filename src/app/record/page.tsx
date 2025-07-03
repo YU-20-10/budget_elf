@@ -26,8 +26,6 @@ import {
   getAccountingRecord,
   watchAccountingRecord,
   delAccountingRecord,
-  // addAccountBook,
-  // setAccountBookRule,
 } from "@/lib/firebase/firestore";
 import useAuth from "@/hooks/useAuth";
 

@@ -112,7 +112,6 @@ export async function addAccountBook(
     //   },
     // accountingRecords 子集合
     // userDefinedCreditCardRules 子集合
-    console.log(docRef);
     return docRef;
   } catch (error) {
     console.log("setAccountBook錯誤", error);
@@ -536,7 +535,7 @@ async function getDocWithRetry(
     } catch (err: unknown) {
       if (err instanceof FirebaseError) {
         if (err.code === "permission-denied") {
-          console.log(`權限錯誤，第${i + 1}次重試...`);
+          // console.log(`權限錯誤，第${i + 1}次重試...`);
           await new Promise((res) => setTimeout(res, delay));
         } else {
           console.error("Firebase 錯誤：", err);
