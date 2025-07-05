@@ -25,9 +25,6 @@
 - **後端(依靠第三方服務，透過前端串接)**
   - Firebase Authentication
     - 實現使用者登入、註冊以及進行身分驗證
-  - **Firestore Security Rules**
-    - 控制不同角色的存取權限
-      - 例如：是否可以邀請其他人共用、是否可以刪除記帳紀錄
     
 - **資料庫**
   - Cloud Firestore（NoSQL）
@@ -35,6 +32,9 @@
       - 監聽資料庫，當資料變更時，結合前端useEffect()同步更新所有使用者的畫面
     - **runTransaction()**
       - 確保多人同時操作時的資料一致性
+    - **Firestore Security Rules**
+      - 控制不同角色的存取權限
+        - 例如：是否可以邀請其他人共用、是否可以刪除記帳紀錄
 
 
 # 主要功能介紹
