@@ -9,6 +9,12 @@ export type AccountingBookType = {
   displayNames: { [key: string]: string };
 };
 
+export type AddAccountingBookFormType = {
+  addBookName: string;
+  addBookDescription: string;
+  addBookUsername:string
+}
+
 export type addAccountingBookInputType = {
   bookName: string;
   bookDescription: string;

@@ -3,7 +3,7 @@
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
 
 import styles from "@/components/Calendar/RecordCalendar.module.css";
-import { getLocalTime } from "@/lib/time";
+import { getLocalTime } from "@/utils/time";
 
 type CalendarProps = {
   selected: Date;

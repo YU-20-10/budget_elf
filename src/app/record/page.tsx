@@ -8,8 +8,8 @@ import useAccountBook from "@/hooks/useAccountBook";
 import ModalDialog from "@/components/Dialogs/ModalDialog";
 import CategoryTab from "@/components/Tabs/CategoryTab";
 import CardModalDialog from "@/components/Dialogs/CardModalDialog";
-import MessageModalDialog from "@/components/Dialogs/MessageModalDialog";
-
+import AlertMessageDialog from "@/components/Dialogs/AlertMessageDialog";
+import ComfirmDialog from "@/components/Dialogs/ComfirmDialog";
 import {
   defaultExpenseMainCategory,
   defaultExpenseSubCategory,
@@ -20,13 +20,14 @@ import {
 } from "@/data/category";
 import { AccountingRecordWithIdType } from "@/types/AccountingBookType";
 import { PaymentRulesType } from "@/types/PaymentRulesType";
+import { AlertMessageDialogType, ComfirmDialogType } from "@/types/DialogType";
 import { defaultPaymentRules } from "@/data/paymentRules";
 import {
   addAccountingRecord,
   getAccountingRecord,
   watchAccountingRecord,
   delAccountingRecord,
-} from "@/lib/firebase/firestore";
+} from "@/lib/firebase/repository/accountingBooksRepository";
 import useAuth from "@/hooks/useAuth";
 
 type organizeDataType = {
@@ -77,19 +78,26 @@ export default function Record() {
   const [categoryIsOpen, setcategoryIsOpen] = useState<boolean>(false);
   const [dateIsOpen, setDateIsOpen] = useState<boolean>(false);
   const [paymentIsOpen, setPaymentIsOpen] = useState<boolean>(false);
-  const [alertMessageIsOpen, setAlertMessageIsOpen] = useState<boolean>(false);
-  // const [cardModalIsOpen, setCardModalIsOpen] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [addBookOpen, setAddBookOpen] = useState<boolean>(false);
+  const [alertDialog, setAlertDialog] = useState<AlertMessageDialogType>({
+    alertIsOpen: false,
+    content: <></>,
+  });
+  const [comfirmDialog, setComfirmDialog] = useState<
+    ComfirmDialogType & { content: ReactNode }
+  >({
+    comfirmIsOpen: false,
+    title: "",
+    content: <></>,
+    confirmBtnHandler: () => {},
+  });
 
   // 資料顯示用 / 排序歸類資料
   const [organizeAccountingRecord, setOrganizeAccountingRecord] =
     useState<organizeDataType>({});
   const [activeRecord, setActiveRecord] =
     useState<AccountingRecordWithIdType | null>(null);
-  const [alertMessageContent, setAlertMessageContent] = useState<ReactNode>(
-    <></>
-  );
   const [modalContent, setModalContent] = useState<ReactNode>(null);
 
   // 取得使用者互動資料用
@@ -144,8 +152,10 @@ export default function Record() {
   // 記帳
   async function recordSubmitHandler() {
     if (amountInput === "" || !selectedMainCategory || !selectedSubCategory) {
-      setAlertMessageContent(<p>表單未填寫完整</p>);
-      setAlertMessageIsOpen(true);
+      setAlertDialog({
+        alertIsOpen: true,
+        content: <p>表單未填寫完整</p>,
+      });
       return;
     }
     const record = {
@@ -170,67 +180,12 @@ export default function Record() {
     }
   }
   function cardModalDelBtnClickHandler() {
-    setAlertMessageContent(
-      <div className="w-full">
-        <p className="mb-4">確認要刪除此筆紀錄?</p>
-        <ul className="border rounded-xl p-3 mb-4">
-          <li>
-            <span className="font-bold">記帳人：</span>
-            {`${
-              activeRecord?.recorderUid
-                ? selectedAccountingBook?.displayNames?.[
-                    activeRecord?.recorderUid
-                  ]
-                  ? selectedAccountingBook?.displayNames?.[
-                      activeRecord?.recorderUid
-                    ]
-                  : activeRecord?.recorderUid
-                : ""
-            }`}
-          </li>
-          <li>
-            <span className="font-bold">日期：</span>
-            {activeRecord?.transactionDate instanceof Date
-              ? activeRecord?.transactionDate.toLocaleDateString("zh-TW")
-              : ""}
-          </li>
-          <li>
-            <span className="font-bold">金額：</span>
-            {activeRecord?.amount}
-          </li>
-          <li>
-            <span className="font-bold">付款方式：</span>
-            {activeRecord?.paymentRule}
-          </li>
-          <li>
-            <span className="font-bold">分類：</span>
-            {`${activeRecord?.categoryType} - ${activeRecord?.mainCategory} - ${activeRecord?.subCategory}`}
-          </li>
-
-          <li>
-            <span className="font-bold">備註：</span>
-            {activeRecord?.description}
-          </li>
-        </ul>
-        <div className="flex justify-around">
-          <button
-            type="button"
-            className="block border px-4 py-3 rounded-xl cursor-pointer hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
-            onClick={() => setAlertMessageIsOpen(false)}
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            className="block bg-secondary text-white px-4 py-3 rounded-xl cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary focus:bg-primary focus:font-bold"
-            onClick={confirmDelRecord}
-          >
-            確認
-          </button>
-        </div>
-      </div>
-    );
-    setAlertMessageIsOpen(true);
+    setComfirmDialog({
+      comfirmIsOpen: true,
+      title: "",
+      content: delRecordConfirmContent,
+      confirmBtnHandler: confirmDelRecord,
+    });
   }
 
   async function confirmDelRecord() {
@@ -240,14 +195,18 @@ export default function Record() {
         activeRecord.id
       );
       if (result) {
-        setAlertMessageIsOpen(false);
-        setAlertMessageContent(<p>紀錄已刪除</p>);
+        setComfirmDialog((prev) => ({ ...prev, comfirmIsOpen: false }));
+        setAlertDialog({
+          alertIsOpen: true,
+          content: <p className="text-lg">紀錄已刪除</p>,
+        });
         setActiveRecord(null);
-        setAlertMessageIsOpen(true);
       } else {
-        setAlertMessageIsOpen(false);
-        setAlertMessageContent(<p>紀錄未能刪除，請稍後再試</p>);
-        setAlertMessageIsOpen(true);
+        setComfirmDialog((prev) => ({ ...prev, comfirmIsOpen: false }));
+        setAlertDialog({
+          alertIsOpen: true,
+          content: <p className="text-lg">紀錄未能刪除，請稍後再試</p>,
+        });
       }
     }
   }
@@ -289,7 +248,10 @@ export default function Record() {
     <ul>
       {paymentRules.map((rule: PaymentRulesType) => {
         return (
-          <li key={`rule${rule.name}`} className="border rounded-md mb-2">
+          <li
+            key={`rule${rule.name}`}
+            className="border rounded-md mb-2 text-black"
+          >
             <button
               type="button"
               className={`block w-full p-2 rounded-md ${
@@ -308,6 +270,51 @@ export default function Record() {
         );
       })}
     </ul>
+  );
+
+  const delRecordConfirmContent = (
+    <div className="w-full text-black">
+      <p className="mb-4">確認要刪除此筆紀錄?</p>
+      <ul className="border rounded-xl p-3 mb-4">
+        <li>
+          <span className="font-bold">記帳人：</span>
+          {`${
+            activeRecord?.recorderUid
+              ? selectedAccountingBook?.displayNames?.[
+                  activeRecord?.recorderUid
+                ]
+                ? selectedAccountingBook?.displayNames?.[
+                    activeRecord?.recorderUid
+                  ]
+                : activeRecord?.recorderUid
+              : ""
+          }`}
+        </li>
+        <li>
+          <span className="font-bold">日期：</span>
+          {activeRecord?.transactionDate instanceof Date
+            ? activeRecord?.transactionDate.toLocaleDateString("zh-TW")
+            : ""}
+        </li>
+        <li>
+          <span className="font-bold">金額：</span>
+          {activeRecord?.amount}
+        </li>
+        <li>
+          <span className="font-bold">付款方式：</span>
+          {activeRecord?.paymentRule}
+        </li>
+        <li>
+          <span className="font-bold">分類：</span>
+          {`${activeRecord?.categoryType} - ${activeRecord?.mainCategory} - ${activeRecord?.subCategory}`}
+        </li>
+
+        <li>
+          <span className="font-bold">備註：</span>
+          {activeRecord?.description}
+        </li>
+      </ul>
+    </div>
   );
   // --- template ---
 
@@ -418,7 +425,7 @@ export default function Record() {
   // --- useEffect ---
 
   return (
-    <main className="flex flex-col items-center p-6 lg:min-h-[calc(100vh-100px)] mb-25 lg:mb-0">
+    <main className="flex flex-col items-center p-6 lg:min-h-[calc(100vh-100px)] mb-25 lg:mb-0 text-black">
       <div className="container grow">
         <div className="mb-3 flex justify-between">
           <button
@@ -426,7 +433,7 @@ export default function Record() {
             onClick={() => {
               router.push("/accountingBook");
             }}
-            className="flex justify-center items-center border border-primary rounded-xl p-3 overflow-hidden min-w-[120px] cursor-pointer hover:bg-primary hover:text-black focus:bg-primary focus:text-black"
+            className="flex justify-center items-center border border-primary rounded-xl p-3 overflow-hidden min-w-[120px] cursor-pointer hover:bg-primary hover:text-black focus:bg-primary focus:text-black text-black bg-white"
           >
             <i className="bi bi-arrow-left-circle-fill text-2xl text-secondary hover:text-black focus:text-black pe-2"></i>
             返回
@@ -461,7 +468,7 @@ export default function Record() {
               placeholder="金額"
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
-              className="block border border-primary rounded-xl p-3 w-full text-center placeholder:text-center mb-3"
+              className="block border border-primary rounded-xl p-3 w-full text-center placeholder:text-center mb-3 bg-white"
             />
             <div className="mb-3">
               <ModalDialog
@@ -478,7 +485,7 @@ export default function Record() {
               ></ModalDialog>
             </div>
             {selectedTabIndex === 0 ? (
-              <div className="mb-3">
+              <div className="mb-3 text-black">
                 <ModalDialog
                   modalBtn={
                     selectedPaymentRule ? selectedPaymentRule.name : "付款方式"
@@ -500,7 +507,7 @@ export default function Record() {
               placeholder="備註"
               value={inputDescription ? inputDescription : undefined}
               onChange={(e) => setInputDescription(e.target.value)}
-              className="block border border-primary rounded-xl p-3 w-full mb-3"
+              className="block border border-primary rounded-xl p-3 w-full mb-3 bg-white"
               rows={5}
             ></textarea>
             <div className="grow flex items-end">
@@ -514,8 +521,8 @@ export default function Record() {
             </div>
           </div>
           <div className="lg:w-1/2 py-3 grow p-3 lg:me-3 lg:h-[calc(100vh-170px)]">
-            <div className="border h-full p-3 overflow-auto">
-              <div className="lg:h-full overflow-auto">
+            <div className="border h-full p-3 overflow-auto bg-white">
+              <div className="lg:h-full overflow-auto text-black">
                 {Object.keys(organizeAccountingRecord).length > 0 ? (
                   Object.keys(organizeAccountingRecord).map((date) => {
                     return (
@@ -534,16 +541,8 @@ export default function Record() {
                               key={record.id}
                               className="mt-3 my-4 hover:border focus:border rounded-lg"
                             >
-                              {/* <CardModalDialog
-                                isOpen={cardModalIsOpen}
-                                setIsOpen={setCardModalIsOpen}
-                                record={record}
-                                displayName={selectedAccountingBook?.displayNames}
-                                paymentRule={paymentRules}
-                              ></CardModalDialog> */}
                               <div
                                 onClick={() => {
-                                  // setCardModalIsOpen(true);
                                   setActiveRecord(record);
                                 }}
                                 className="cursor-pointer bg-light rounded-lg p-3"
@@ -630,16 +629,26 @@ export default function Record() {
                     ></CardModalDialog>
                   </div>
                 )}
-                <MessageModalDialog
-                  isOpen={alertMessageIsOpen}
-                  setIsOpen={setAlertMessageIsOpen}
-                  title=""
-                  content={
-                    <div className="min-h-25 flex justify-center items-center">
-                      {alertMessageContent}
-                    </div>
+                <ComfirmDialog
+                  comfirmIsOpen={comfirmDialog.comfirmIsOpen}
+                  title={comfirmDialog.title}
+                  confirmBtn={comfirmDialog.confirmBtn}
+                  confirmBtnHandler={comfirmDialog.confirmBtnHandler}
+                  dialogOnClose={() =>
+                    setComfirmDialog((prev) => ({
+                      ...prev,
+                      comfirmIsOpen: false,
+                    }))
                   }
-                ></MessageModalDialog>
+                >
+                  {comfirmDialog.content}
+                </ComfirmDialog>
+                <AlertMessageDialog
+                  dialogProps={alertDialog}
+                  dialogOnClose={() =>
+                    setAlertDialog((prev) => ({ ...prev, alertIsOpen: false }))
+                  }
+                ></AlertMessageDialog>
               </div>
             </div>
           </div>

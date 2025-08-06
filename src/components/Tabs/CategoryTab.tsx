@@ -51,38 +51,7 @@ export default function CategoryTab({
         </Tab>
       </TabList>
       <TabPanels>
-        <TabPanel className="py-3">
-          {/* <ul className="grid grid-cols-3 gap-2">
-            {(categoryDisplay === "mainCategory"
-              ? mainCategory
-              : selectedMainCategory && subCategory[selectedMainCategory]
-              ? subCategory[selectedMainCategory]
-              : []
-            )?.map((category: CategoryType) => {
-              return (
-                <li
-                  key={`category+${category.name}`}
-                  className="flex justify-center"
-                >
-                  <button
-                    className="flex flex-col items-center text-xs"
-                    onClick={categoryClickHandler}
-                    {...(categoryDisplay === "mainCategory"
-                      ? { "data-main": category.name }
-                      : { "data-sub": category.name })}
-                  >
-                    <Image
-                      src={category.icon}
-                      width={30}
-                      height={30}
-                      alt="category icon"
-                    ></Image>
-                    {category.name}
-                  </button>
-                </li>
-              );
-            })}
-          </ul> */}
+        <TabPanel className="py-3 text-black">
           <CategoryList
             mainCategory={expenseMainCategory}
             subCategory={expenseSubCategory}

@@ -1,10 +1,12 @@
 "use client";
 import { useState, ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { emptyCheck, emailCheck, passwordCheck } from "@/lib/inputCheck";
+import { emptyCheck, emailCheck, passwordCheck } from "@/utils/inputCheck";
 import { authSignIn } from "@/lib/firebase/firebaseAuth";
-import MessageModalDialog from "@/components/Dialogs/MessageModalDialog";
+import { AlertMessageDialogType, ComfirmDialogType } from "@/types/DialogType";
 import ModalDialog from "@/components/Dialogs/ModalDialog";
+import AlertMessageDialog from "@/components/Dialogs/AlertMessageDialog";
+import ComfirmDialog from "@/components/Dialogs/ComfirmDialog";
 
 type SignInInputData = {
   signInEmail: string;
@@ -17,16 +19,23 @@ export default function SignIn() {
   // --- useState ---
 
   // 元件控制用
-  const [alertMessageIsOpen, setAlertMessageIsOpen] = useState<boolean>(false);
   const [loginSelectIsOpen, setLoginSelectIsOpen] = useState<boolean>(false);
-  const [loginSuccessIsOpen, setLoginSuccessIsOpen] = useState<boolean>(false);
+  const [alertDialog, setAlertDialog] = useState<AlertMessageDialogType>({
+    alertIsOpen: false,
+    content: <></>,
+  });
+  const [comfirmDialog, setComfirmDialog] = useState<
+    ComfirmDialogType & { content: ReactNode }
+  >({
+    comfirmIsOpen: false,
+    title: "",
+    content: <></>,
+    confirmBtnHandler: () => {},
+  });
 
   // 畫面顯示用
   const [errorMessage, setErrorMessage] = useState<Partial<SignInInputData>>(
     {}
-  );
-  const [alertMessageContent, setAlertMessageContent] = useState<ReactNode>(
-    <></>
   );
 
   // 取得使用者互動資料用
@@ -35,13 +44,6 @@ export default function SignIn() {
     signInPassword: "testtest",
   });
   const [selectedItem, setSelectedItem] = useState<string>("測試帳號一");
-
-  // 資料傳遞用
-  const [loginConfirmHandler, setloginConfirmHandler] = useState<() => void>(
-    () => {
-      setAlertMessageIsOpen(false);
-    }
-  );
 
   // --- useState ---
 
@@ -69,23 +71,26 @@ export default function SignIn() {
 
   function showMessageDialog(): Promise<void> {
     return new Promise((resolve) => {
-      setLoginSuccessIsOpen(true);
-
       const loginInConfirmHandler = () => {
-        setLoginSuccessIsOpen(false);
+        console.log(123);
+        setComfirmDialog((prev) => ({ ...prev, comfirmIsOpen: false }));
         resolve();
       };
-
-      setloginConfirmHandler(() => loginInConfirmHandler);
+      setComfirmDialog({
+        comfirmIsOpen: true,
+        title: "",
+        content: <p className="text-lg">登入成功</p>,
+        confirmBtnHandler: loginInConfirmHandler,
+      });
     });
   }
 
   async function clickHandler() {
     if (errorMessage.signInEmail || errorMessage.signInPassword) {
-      setAlertMessageContent(
-        <p className="text-lg">請確認每個欄位是否都有填寫正確</p>
-      );
-      setAlertMessageIsOpen(true);
+      setAlertDialog({
+        alertIsOpen: true,
+        content: <p className="text-lg">請確認每個欄位是否都有填寫正確</p>,
+      });
       return;
     }
     try {
@@ -96,8 +101,11 @@ export default function SignIn() {
       await showMessageDialog();
       router.push("/accountingBook");
     } catch (error) {
-      setAlertMessageContent(<p className="text-lg">{`登入失敗,${error}`}</p>);
-      setAlertMessageIsOpen(true);
+      console.log("clickHandler", error);
+      setAlertDialog({
+        alertIsOpen: true,
+        content: <p className="text-lg">登入失敗，請稍後再試一次</p>,
+      });
     }
   }
 
@@ -232,29 +240,26 @@ export default function SignIn() {
         <div className="absolute bottom-[-380px] lg:bottom-[-250px]  left-[-150px] h-[500px] w-[500px] bg-[#6A717B] rounded-[50%] -z-1"></div>
         <div className="absolute top-[-310px] lg:top-[-200px] right-[-150px] h-[400px] w-[400px] bg-[#E0E3E8] rounded-[50%] -z-1"></div>
       </div>
-      <MessageModalDialog
-        isOpen={alertMessageIsOpen}
-        setIsOpen={setAlertMessageIsOpen}
-        title=""
-        content={
-          <div className="min-h-25 flex justify-center items-center">
-            {alertMessageContent}
-          </div>
+      <ComfirmDialog
+        comfirmIsOpen={comfirmDialog.comfirmIsOpen}
+        title={comfirmDialog.title}
+        confirmBtn={comfirmDialog.confirmBtn}
+        confirmBtnHandler={comfirmDialog.confirmBtnHandler}
+        dialogOnClose={() =>
+          setComfirmDialog((prev) => ({
+            ...prev,
+            comfirmIsOpen: false,
+          }))
         }
-        withConfirmBtn={true}
-      ></MessageModalDialog>
-      <MessageModalDialog
-        isOpen={loginSuccessIsOpen}
-        setIsOpen={() => {}}
-        title=""
-        content={
-          <div className="min-h-25 flex justify-center items-center">
-            <p className="text-lg">登入成功</p>
-          </div>
+      >
+        {comfirmDialog.content}
+      </ComfirmDialog>
+      <AlertMessageDialog
+        dialogProps={alertDialog}
+        dialogOnClose={() =>
+          setAlertDialog((prev) => ({ ...prev, alertIsOpen: false }))
         }
-        withConfirmBtn={true}
-        confirmBtnHandler={loginConfirmHandler}
-      ></MessageModalDialog>
+      ></AlertMessageDialog>
     </main>
   );
 }
