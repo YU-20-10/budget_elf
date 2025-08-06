@@ -1,5 +1,8 @@
 import { authSignUp } from "@/lib/firebase/firebaseAuth";
-import { setUserData, getUserData } from "@/lib/firebase/firestore";
+import {
+  setUserData,
+  getUserData,
+} from "@/lib/firebase/repository/usersRepository";
 
 export async function userSignUp(
   name: string,
@@ -7,13 +10,10 @@ export async function userSignUp(
   password: string
 ) {
   try {
-    // 在authentication上註冊
     const userData = await authSignUp(email, password);
     if (userData) {
-      // 在firestore database裡儲存資料
       await setUserData(userData.uid, name, email);
 
-      // 取得firestore database裡的資料，驗證資料已寫入
       const docData = await getUserData(userData.uid);
       return docData;
     }

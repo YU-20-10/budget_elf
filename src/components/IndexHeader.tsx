@@ -1,29 +1,36 @@
 "use client";
 
-import { useState, ReactNode } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { userSignOut } from "@/lib/firebase/firebaseAuth";
 import useAuth from "@/hooks/useAuth";
-import MessageModalDialog from "@/components/Dialogs/MessageModalDialog";
+import AlertMessageDialog from "@/components/Dialogs/AlertMessageDialog";
+import { AlertMessageDialogType } from "@/types/DialogType";
 
 export default function IndexHeader() {
   const userData = useAuth();
   const router = useRouter();
-  const [alertMessageIsOpen, setAlertMessageIsOpen] = useState<boolean>(false);
-  const [alertMessageContent, setAlertMessageContent] = useState<ReactNode>(
-    <></>
-  );
+  const [alertDialog, setAlertDialog] = useState<AlertMessageDialogType>({
+    alertIsOpen: false,
+    content: <></>,
+  });
+
   async function signOutClickHandler() {
     try {
       await userSignOut();
-      setAlertMessageContent(<p className="text-lg">登出成功</p>);
-      setAlertMessageIsOpen(true);
+      setAlertDialog({
+        alertIsOpen: true,
+        content: <p className="text-lg">登出成功</p>,
+      });
       router.push("/");
     } catch (error) {
-      setAlertMessageContent(<p className="text-lg">{`登出失敗,${error}`}</p>);
-      setAlertMessageIsOpen(true);
+      console.log("signOutClickHandler", error);
+      setAlertDialog({
+        alertIsOpen: true,
+        content: <p className="text-lg">登出失敗，請稍後再試一次</p>,
+      });
     }
   }
   return (
@@ -31,7 +38,7 @@ export default function IndexHeader() {
       <div className="container max-w-7xl py-3 px-4">
         <div className="flex justify-between items-center">
           <h1>
-            <Link href="/" className="flex">
+            <Link href="/" className="flex bg-white px-1 rounded-md">
               <Image
                 src="/budget_elf_logo_withtext.svg"
                 alt="Budget Elf logo"
@@ -78,17 +85,12 @@ export default function IndexHeader() {
           )}
         </div>
       </div>
-      <MessageModalDialog
-        isOpen={alertMessageIsOpen}
-        setIsOpen={setAlertMessageIsOpen}
-        title=""
-        content={
-          <div className="min-h-25 flex justify-center items-center">
-            {alertMessageContent}
-          </div>
+      <AlertMessageDialog
+        dialogProps={alertDialog}
+        dialogOnClose={() =>
+          setAlertDialog((prev) => ({ ...prev, alertIsOpen: false }))
         }
-        withConfirmBtn={true}
-      ></MessageModalDialog>
+      ></AlertMessageDialog>
     </header>
   );
 }

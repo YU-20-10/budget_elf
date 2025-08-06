@@ -41,8 +41,8 @@ export default function MessageModalDialog({
         transition
         className="fixed inset-0 flex w-screen items-center justify-center bg-black/30 p-4 transition duration-300 ease-out data-closed:opacity-0 z-3"
       >
-        <DialogPanel className="max-w-lg min-w-2xs md:min-w-md space-y-4 bg-white p-6 lg:p-10 rounded-xl lg:max-h-5/6 overflow-auto">
-          <DialogTitle className="font-bold">{title}</DialogTitle>
+        <DialogPanel className="max-w-lg min-w-2xs md:min-w-md space-y-4 bg-white p-6 lg:p-10 rounded-xl lg:max-h-5/6 overflow-auto text-black">
+          <DialogTitle className="font-bold text-black">{title}</DialogTitle>
           <div autoFocus>{content}</div>
 
           <div className="flex justify-end">

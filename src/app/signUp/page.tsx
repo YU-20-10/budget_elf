@@ -1,15 +1,15 @@
 "use client";
-import { useState, ReactNode } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-
 import {
   emptyCheck,
   nameCheck,
   emailCheck,
   passwordCheck,
-} from "@/lib/inputCheck";
+} from "@/utils/inputCheck";
 import { userSignUp } from "@/lib/user/userFunctions";
-import MessageModalDialog from "@/components/Dialogs/MessageModalDialog";
+import AlertMessageDialog from "@/components/Dialogs/AlertMessageDialog";
+import { AlertMessageDialogType } from "@/types/DialogType";
 
 type SignUpInputData = {
   signUpUserName: string;
@@ -27,10 +27,10 @@ export default function SignUp() {
     {}
   );
   const router = useRouter();
-  const [alertMessageIsOpen, setAlertMessageIsOpen] = useState<boolean>(false);
-  const [alertMessageContent, setAlertMessageContent] = useState<ReactNode>(
-    <></>
-  );
+  const [alertDialog, setAlertDialog] = useState<AlertMessageDialogType>({
+    alertIsOpen: false,
+    content: <></>,
+  });
 
   function changeHandler(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
@@ -55,13 +55,16 @@ export default function SignUp() {
   async function clickHandler() {
     if (
       errorMessage.signUpUserName ||
+      !signUpInputData.signUpUserName ||
       errorMessage.signUpEmail ||
-      errorMessage.signUpPassword
+      !signUpInputData.signUpEmail ||
+      errorMessage.signUpPassword ||
+      !signUpInputData.signUpPassword
     ) {
-      setAlertMessageContent(
-        <p className="text-lg">請確認每個欄位是否都有填寫正確</p>
-      );
-      setAlertMessageIsOpen(true);
+      setAlertDialog({
+        alertIsOpen: true,
+        content: <p className="text-lg">請確認每個欄位是否都有填寫正確</p>,
+      });
       return;
     }
     try {
@@ -71,18 +74,23 @@ export default function SignUp() {
         signUpInputData.signUpPassword
       );
       if (userDoc) {
-        setAlertMessageContent(<p className="text-lg">註冊成功</p>);
-        setAlertMessageIsOpen(true);
+        setAlertDialog({
+          alertIsOpen: true,
+          content: <p className="text-lg">註冊成功</p>,
+        });
         router.push("/accountingBook");
       } else {
-        setAlertMessageContent(
-          <p className="text-lg">註冊失敗，請稍候再試一次</p>
-        );
-        setAlertMessageIsOpen(true);
+        setAlertDialog({
+          alertIsOpen: true,
+          content: <p className="text-lg">註冊失敗，請稍候再試一次</p>,
+        });
       }
     } catch (error) {
-      setAlertMessageContent(<p className="text-lg">{`註冊失敗,${error}`}</p>);
-      setAlertMessageIsOpen(true);
+      console.log("clickHandler", error);
+      setAlertDialog({
+        alertIsOpen: true,
+        content: <p className="text-lg">註冊失敗，請稍後再試一次</p>,
+      });
     }
   }
 
@@ -157,17 +165,12 @@ export default function SignUp() {
         <div className="absolute bottom-[-380px] lg:bottom-[-250px]  left-[-150px] h-[500px] w-[500px] bg-[#6A717B] rounded-[50%] -z-1"></div>
         <div className="absolute top-[-310px] lg:top-[-200px] right-[-150px] h-[400px] w-[400px] bg-[#E0E3E8] rounded-[50%] -z-1"></div>
       </div>
-      <MessageModalDialog
-        isOpen={alertMessageIsOpen}
-        setIsOpen={setAlertMessageIsOpen}
-        title=""
-        content={
-          <div className="min-h-25 flex justify-center items-center">
-            {alertMessageContent}
-          </div>
+      <AlertMessageDialog
+        dialogProps={alertDialog}
+        dialogOnClose={() =>
+          setAlertDialog((prev) => ({ ...prev, alertIsOpen: false }))
         }
-        withConfirmBtn={true}
-      ></MessageModalDialog>
+      ></AlertMessageDialog>
     </main>
   );
 }

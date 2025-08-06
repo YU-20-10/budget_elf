@@ -6,19 +6,15 @@ import useAuth from "@/hooks/useAuth";
 import useAccountBook from "@/hooks/useAccountBook";
 import RecordCalendar from "@/components/Calendar/RecordCalendar";
 import DoughnutChart from "@/components/Chart/DoughnutChart";
-// import ParallelTab from "@/components/Tabs/ParallelTab";
 import ModalDialog from "@/components/Dialogs/ModalDialog";
 import MessageModalDialog from "@/components/Dialogs/MessageModalDialog";
 import YearAndMonthOrDayPicker from "@/components/Calendar/YearAndMonthOrDayPickerPicker";
-import {
-  // getAllAccountingRecord,
-  getAllMyAccountingRecord,
-} from "@/lib/firebase/firestore";
+import { getAllMyAccountingRecord } from "@/lib/firebase/repository/accountingBooksRepository";
 import {
   AccountingRecordSortType,
   AccountingRecordWithIdAndBookIdType,
 } from "@/types/AccountingBookType";
-import { getLocalTime } from "@/lib/time";
+import { getLocalTime } from "@/utils/time";
 import {
   defaultExpenseMainCategory,
   // defaultExpenseSubCategory,
@@ -53,19 +49,6 @@ function recordsSortByDate(records: AccountingRecordWithIdAndBookIdType[]) {
   }, {} as Record<string, AccountingRecordWithIdAndBookIdType[]>);
   return allRecordSortByDateObj;
 }
-
-// function recordsSortByBook(records: AccountingRecordWithIdAndBookIdType[]) {
-//   const allRecordSortByBookObj = records.reduce((acc, value) => {
-//     const accountingBookId = value.accountingBookId;
-//     if (acc?.[accountingBookId]) {
-//       acc[accountingBookId].push(value);
-//     } else {
-//       acc[accountingBookId] = [value];
-//     }
-//     return acc;
-//   }, {} as Record<string, AccountingRecordWithIdAndBookIdType[]>);
-//   return allRecordSortByBookObj;
-// }
 
 function allCategoryAmount(records: AccountingRecordWithIdAndBookIdType[]) {
   const allCategoryAmountObj = records.reduce((acc, value) => {
@@ -118,9 +101,6 @@ export default function Summary() {
   const [allAccountBookName, setAllAccountBookName] = useState<
     Record<string, string>
   >({});
-  // const [filterAllRecord, setFilterAllRecord] = useState<
-  //   AccountingRecordWithIdAndBookIdType[]
-  // >([]); // 依照選取日期篩選所有record // 可刪除
   const [allRecordSortByCategory, setAllRecordSortByCategory] = useState<{
     [key: string]: number;
   }>({}); // 圓餅圖用
@@ -130,8 +110,6 @@ export default function Summary() {
     支出: 0,
     收入: 0,
   });
-  // const [allRecordSortByBook, setAllRecordSortByBook] =
-  //   useState<AccountingRecordSortType>({});
 
   // 取得使用者互動資料用
   const [selectedYear, setSelectedYear] = useState<number>(
@@ -376,12 +354,6 @@ export default function Summary() {
           <div className="w-full flex flex-col bg-light p-2">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold">收支明細</h2>
-              {/* <ParallelTab
-                tabListClassName={""}
-                tabClassName={""}
-                tabContent={tabContent}
-                panelContent={panelContent}
-              ></ParallelTab> */}
               <div className="my-3">
                 <div className="mb-2">
                   <ModalDialog
@@ -423,13 +395,6 @@ export default function Summary() {
                       onChange={filterDateChangeHandler}
                     ></YearAndMonthOrDayPicker>
                   </div>
-                  {/* <div
-                    className={`${
-                      selectedFilter === "依帳簿檢視" ? "blcok" : "hidden"
-                    }`}
-                  >
-                    3
-                  </div> */}
                 </div>
               </div>
             </div>
@@ -506,12 +471,6 @@ export default function Summary() {
               title="紀錄明細"
               content={recordDetailContent}
             ></MessageModalDialog>
-            {/* <RecordCalendar
-              selected={selectedDate}
-              setSelected={setSelectedDate}
-              recordedDate={recordedDate}
-            ></RecordCalendar> */}
-            {/* <div className="bg-light h-px w-full my-2"></div> */}
             <div></div>
           </div>
         </div>

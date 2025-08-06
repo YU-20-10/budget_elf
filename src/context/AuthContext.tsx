@@ -4,11 +4,9 @@ import { createContext, useState, useEffect, ReactNode } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 
 import { firebaseAuth } from "@/lib/firebase/firebaseConfig";
-import {
-  getUserData,
-  watchAccountBookInvites,
-  watchAccountBookRemoval,
-} from "@/lib/firebase/firestore";
+import { getUserData } from "@/lib/firebase/repository/usersRepository";
+import { watchAccountBookInvites } from "@/lib/firebase/repository/accountBookInvitesRepository";
+import { watchAccountBookRemoval } from "@/lib/firebase/repository/accountBookRemovalsRepository";
 import {
   accountBookInvitesType,
   accountBookRemovalType,
@@ -20,7 +18,6 @@ type UserData = {
   loading: boolean;
 };
 
-// 之後擴充用
 type AuthContextType = {
   user: User | null;
   name: string;
@@ -47,9 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       firebaseAuth,
       async (firebaseUser) => {
         if (firebaseUser) {
-          // 使用者登入後
           const uid = firebaseUser.uid;
-          // 取firestore中的資料
           const firestoreUserData = await getUserData(uid);
           if (firestoreUserData) {
             setUserData({
@@ -67,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           }
         } else {
-          // 使用者登出後
           setUserData({
             user: null,
             name: "",

@@ -35,9 +35,9 @@ export default function CardModalDialog({
         className="fixed inset-0 flex w-screen items-center justify-center bg-black/30 transition duration-300 ease-out data-closed:opacity-0"
       >
         <DialogPanel className="max-w-lg min-w-2xs md:min-w-md space-y-4 bg-white p-6 lg:p-10 rounded-xl">
-          <DialogTitle className="font-bold">記帳資料</DialogTitle>
+          <DialogTitle className="font-bold text-black">記帳資料</DialogTitle>
           <div>
-            <ul>
+            <ul className="text-black">
               <li>
                 <span className="font-bold">記帳人：</span>
                 {`${
@@ -77,7 +77,7 @@ export default function CardModalDialog({
               </li>
             </ul>
           </div>
-          <div className={`${haveBtn ? "flex" : "hidden"} justify-end`}>
+          <div className={`text-black ${haveBtn ? "flex" : "hidden"} justify-end`}>
             <button
               className="border rounded-xl px-3 py-2 me-3 cursor-pointer hover:bg-primary hover:text-white hover:font-bold focus:bg-primary focus:font-bold"
               onClick={delBtnClickHandler}

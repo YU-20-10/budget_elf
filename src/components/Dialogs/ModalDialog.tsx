@@ -36,7 +36,7 @@ export default function ModalDialog({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`block border border-primary rounded-xl p-3 overflow-hidden cursor-pointer hover:border-black ${btnStyle} ${
+        className={`block border border-primary rounded-xl p-3 overflow-hidden cursor-pointer hover:border-black text-black bg-white ${btnStyle} ${
           full ? "w-full" : ""
         } ${minWidth ? "min-w-[120px]" : ""}`}
       >
@@ -48,8 +48,8 @@ export default function ModalDialog({
         transition
         className="fixed inset-0 flex w-screen items-center justify-center bg-black/30 transition duration-300 ease-out data-closed:opacity-0 z-3"
       >
-        <DialogPanel className="max-w-lg min-w-2xs md:min-w-md space-y-4 bg-white p-6 lg:p-10 rounded-xl max-h-5/6 overflow-auto">
-          <DialogTitle className="font-bold">{title}</DialogTitle>
+        <DialogPanel className="max-w-lg min-w-2xs md:min-w-md space-y-4 bg-white p-6 lg:p-10 rounded-xl max-h-5/6 overflow-auto text-black">
+          <DialogTitle className="font-bold text-black">{title}</DialogTitle>
           <Description>{decription ? decription : ""}</Description>
           <div>{content}</div>
         </DialogPanel>

@@ -6,91 +6,101 @@ import React, {
   ReactNode,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Tab,
-  TabGroup,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-} from "@headlessui/react";
 
 import useAuth from "@/hooks/useAuth";
 import useAccountBook from "@/hooks/useAccountBook";
 import MessageModalDialog from "@/components/Dialogs/MessageModalDialog";
+import ComfirmDialog from "@/components/Dialogs/ComfirmDialog";
+import AlertMessageDialog from "@/components/Dialogs/AlertMessageDialog";
+import AddAccountingBookForm from "@/components/Form/AddAccountingBookForm";
+import ShareOrRemoveInputForm from "@/components/Form/ShareOrRemoveInputForm";
+import AccountingBookList from "@/components/AccountingBookList";
 import {
   AccountingBookType,
   accountBookInvitesType,
   AccountBookRuleType,
+  AddAccountingBookFormType,
 } from "@/types/AccountingBookType";
+import { AlertMessageDialogType, ComfirmDialogType } from "@/types/DialogType";
+import {
+  addAccountBook,
+  delAllAccountBook,
+  updateAccountBookDisplayName,
+  delAllAccountingRecord,
+} from "@/lib/firebase/repository/accountingBooksRepository";
+import {
+  setAccountBookRule,
+  getAccountBookRule,
+  updateAccountBookRuleAddBookMember,
+  updateAccountBookRuleRemoveMember,
+  delAccountBookRule,
+} from "@/lib/firebase/repository/accountBookRuleRepository";
 import {
   addAccountBookInvites,
-  updateAccountBookRuleAddBookMember,
   updateAccountBookInvites,
-  setUserAbleAccountBook,
-  updateAccountBookDisplayName,
-  addAccountBook,
-  setAccountBookRule,
-  getUserDataByEmail,
-  delUserAbleAccountBook,
-  updateAccountBookRuleRemoveMember,
-  updateAccountBookRemoval,
-  addAccountBookRemoval,
   getAccountBookInvites,
   delAccountBookInvites,
-  getAccountBookRule,
-  delAccountBookRule,
-  delAllAccountBook,
-  delAllAccountingRecord,
-  delAllAccountBookInvitesAndAddRemoveal,
-} from "@/lib/firebase/firestore";
-import { emailCheck } from "@/lib/inputCheck";
+} from "@/lib/firebase/repository/accountBookInvitesRepository";
+import {
+  setUserAbleAccountBook,
+  delUserAbleAccountBook,
+} from "@/lib/firebase/repository/userAbleAccountBooksRepository";
+import {
+  updateAccountBookRemoval,
+  addAccountBookRemoval,
+} from "@/lib/firebase/repository/accountBookRemovalsRepository";
+import { delAllAccountBookInvitesAndAddRemoveal } from "@/lib/firebase/service/accountingBookRemovalService";
+import userSearchAndValidate from "@/lib/userSearchAndValidate";
 
 export default function AccountingBook() {
   const router = useRouter();
   const { user, name, invitesData, removalDate } = useAuth();
   const { allAccountBook, selectedAccountingBook, setSelectedAccountingBook } =
     useAccountBook();
+  const accountBookThisNameRef = useRef<string | undefined>("");
+  const accountBookInputRef = useRef<AddAccountingBookFormType>({
+    addBookName: "",
+    addBookDescription: "",
+    addBookUsername: "",
+  });
 
   //---useState---
-  // 取得遠端資料後儲存用
-  // const [removalDate, setRemovalData] = useState<accountBookRemovalType[]>([]);
 
   // 元件控制用
-  const [editDialogIsOpen, setEditDialogIsOpen] = useState<boolean>(false);
   const [shareDialogIsOpen, setShareDialogIsOpen] = useState<boolean>(false);
-  const [addBookOpen, setAddBookOpen] = useState<boolean>(false);
-  const [shareBookInfoIsOpen, setShareBookInfoIsOpen] =
-    useState<boolean>(false);
-  const [settingThisNameIsOpen, setSettingThisNameIsOpen] =
-    useState<boolean>(false);
-  const [tabInex, setTabIndex] = useState<number>(0);
-  const [alertMessageIsOpen, setAlertMessageIsOpen] = useState<boolean>(false);
-  const [removeConfirmIsOpen, setRemoveConfirmIsOpen] =
-    useState<boolean>(false);
-  const [removeAllRecordIsOpen, setRemoveAllRecordIIsOpen] =
-    useState<boolean>(false);
-  // const [acceptInvitationIsOpen, setAcceptInvitationIsOpen] =
-  //   useState<boolean>(false);
+  const [alertDialog, setAlertDialog] = useState<AlertMessageDialogType>({
+    alertIsOpen: false,
+    content: <></>,
+  });
+  const [parentComfirmDialog, setParentComfirmDialog] =
+    useState<ComfirmDialogType>({
+      comfirmIsOpen: false,
+      title: "",
+      confirmBtnHandler: () => {},
+    });
+  const [childComfirmDialog, setChildComfirmDialog] = useState<
+    ComfirmDialogType & { content: ReactNode }
+  >({
+    comfirmIsOpen: false,
+    title: "",
+    content: <></>,
+    confirmBtnHandler: () => {},
+  });
 
   // 資料顯示用
   const [accountBookList, setAccountBookList] = useState<ReactNode>(<></>);
   const [redirectLoading, setRedirectLoading] = useState<"hidden" | "block">(
     "hidden"
   );
-  const [alertMessageContent, setAlertMessageContent] = useState<ReactNode>(
-    <></>
-  );
+  const [otherUserId, setOtherUserId] = useState<string | undefined>(undefined);
+  const [dialogType, setDialogType] = useState<
+    "add" | "edit" | "remove" | "accepted" | "info" | "delete" | "none"
+  >("none");
 
   // 取得使用者互動資料用
-  // const [activeBook, setActiveBook] = useState<AccountingBookType | undefined>(
-  //   undefined
-  // );
   const [activeShareBook, setActiveShareBook] =
     useState<AccountingBookType | null>(null);
   const [activeEditBook, setActiveEditBook] =
@@ -100,113 +110,327 @@ export default function AccountingBook() {
   >(undefined);
 
   // 表單輸入儲存用
+  const [addBookFormInput, setAddBookFormInput] =
+    useState<AddAccountingBookFormType>({
+      addBookName: "",
+      addBookDescription: "",
+      addBookUsername: "",
+    });
+  const [shareEmailInput, setShareEmailInput] = useState<string>("");
+  const [removeEmailInput, setRemoveEmailInput] = useState<string>("");
   const [accountBookThisName, setAccountBookThisName] = useState<
     string | undefined
   >(name);
-  const [shareEmailInput, setShareEmailInput] = useState<string | undefined>(
-    undefined
-  );
-  const [removeEmailInput, setRemoveEmailInput] = useState<string | undefined>(
-    undefined
-  );
   const [usingUserName, setUsingUserName] = useState<string | undefined>(name);
-  const [addBookNameInput, setAddBookNameInput] = useState<string | undefined>(
-    ""
-  );
-  const [addBookUsernameInput, setAddBookUsernameInput] = useState<
-    string | undefined
-  >("");
-  const [addBookDescriptionInput, setAddBookDescription] = useState<
-    string | undefined
-  >("");
+
   //---useState---
 
   //---function---
-  const shareEmailCheck = useCallback(async () => {
-    // setShareUid("");
-    const userEmail = user?.email;
-    if (!shareEmailInput || userEmail === shareEmailInput) {
-      setAlertMessageContent(
-        <p className="text-lg">請輸入要邀請共用的email</p>
+  
+  function getParentDialogContet() {
+    if (dialogType === "add") {
+      return (
+        <AddAccountingBookForm
+          formInput={addBookFormInput}
+          fromInputChangeHandler={(
+            event: React.ChangeEvent<HTMLInputElement>
+          ) => {
+            const { name, value } = event.target;
+            const key = name as keyof AddAccountingBookFormType;
+            if (key in accountBookInputRef.current) {
+              accountBookInputRef.current = {
+                ...accountBookInputRef.current,
+                [key]: value,
+              };
+            }
+            setAddBookFormInput((prev) => ({
+              ...prev,
+              [key]: value,
+            }));
+          }}
+          textareaChangeHandler={(
+            event: React.ChangeEvent<HTMLTextAreaElement>
+          ) => {
+            accountBookInputRef.current = {
+              ...accountBookInputRef.current,
+              addBookDescription: event.target.value,
+            };
+            setAddBookFormInput((prev) => ({
+              ...prev,
+              addBookDescription: event.target.value,
+            }));
+          }}
+        ></AddAccountingBookForm>
       );
-      setAlertMessageIsOpen(true);
+    } else if (dialogType === "remove") {
+      if (activeShareBook?.id && otherUserId) {
+        return (
+          <div>
+            <p className="mb-6 text-lg">
+              是否確認將
+              {activeShareBook?.displayNames?.[otherUserId]
+                ? activeShareBook.displayNames?.[otherUserId]
+                : otherUserId}{" "}
+              從 {activeShareBook?.bookName} 當中移除?
+            </p>
+          </div>
+        );
+      }
+    } else if (dialogType === "edit") {
+      return (
+        <>
+          <ul>
+            <li className="mb-3 text-black">
+              <span className="block font-bold mb-2">帳簿名稱：</span>
+              <p>{activeEditBook?.bookName}</p>
+            </li>
+            <li className="text-black">
+              <span className="block font-bold mb-2">在帳簿中使用的稱呼：</span>
+              <input
+                type="text"
+                name="accountBookThisName"
+                id="accountBookThisName"
+                placeholder="在帳簿中會以此暱稱顯示記帳資料"
+                className="block border border-primary p-2 rounded-xl w-full"
+                value={accountBookThisName}
+                onChange={(e) => {
+                  setAccountBookThisName(e.target.value);
+                  accountBookThisNameRef.current = e.target.value;
+                }}
+              />
+            </li>
+          </ul>
+        </>
+      );
+    } else if (dialogType === "accepted") {
+      return (
+        <>
+          <ul className="mb-4 ">
+            <li>
+              <span className="block font-bold mb-2">在帳簿中使用的稱呼：</span>
+              <input
+                type="text"
+                name="accountBookThisName"
+                id="accountBookThisName"
+                placeholder="在帳簿中會以此暱稱顯示記帳資料"
+                className="block border border-primary p-2 rounded-xl w-full"
+                value={accountBookThisName}
+                onChange={(e) => {
+                  setAccountBookThisName(e.target.value);
+                  accountBookThisNameRef.current = e.target.value;
+                }}
+              />
+            </li>
+          </ul>
+        </>
+      );
+    } else if (dialogType === "info") {
+      return (
+        <>
+          <ul className="py-3 text-black">
+            <li>
+              <span className="font-bold">帳簿名稱：</span>
+              {activeInvites?.accountingBookName}
+            </li>
+            <li>
+              <span className="font-bold">邀請人UID：</span>
+              {activeInvites?.fromUid}
+            </li>
+          </ul>
+        </>
+      );
+    } else if (dialogType === "delete") {
+      return (
+        <div>
+          <p className="mb-6 text-lg">
+            是否確認刪除
+            <span className="font-bold">
+              {selectedAccountingBook?.bookName}
+            </span>
+            ?
+          </p>
+        </div>
+      );
+    } else {
+      return <></>;
+    }
+  }
+
+  function addBookBtnClickHandler() {
+    setDialogType("add");
+    setParentComfirmDialog({
+      comfirmIsOpen: true,
+      title: "新增帳簿",
+      confirmBtn: "新增",
+      confirmBtnHandler: addBookClickHandler,
+    });
+  }
+
+  const addBookClickHandler = useCallback(async () => {
+    const { addBookName, addBookUsername, addBookDescription } =
+      accountBookInputRef.current;
+    if (!addBookName || !user?.uid) {
+      setAlertDialog({
+        alertIsOpen: true,
+        content: <p className="text-lg">資料未填寫完整</p>,
+      });
       return;
     }
-    const check = emailCheck(shareEmailInput);
-    if (!check) {
-      setAlertMessageContent(<p className="text-lg">email格式錯誤</p>);
-      setAlertMessageIsOpen(true);
-      return;
-    } else {
-      const otherUserData = await getUserDataByEmail(shareEmailInput);
-      if (!otherUserData) {
-        setAlertMessageContent(
-          <p className="text-lg">使用者email有誤，查無資料</p>
-        );
-        setAlertMessageIsOpen(true);
+    const addAccountingBookInput = {
+      bookName: addBookName,
+      bookDescription: addBookDescription,
+      bookOwnerUid: user?.uid,
+      displayNames: {
+        [user?.uid]: addBookUsername
+          ? addBookUsername
+          : usingUserName
+          ? usingUserName
+          : "",
+      },
+    };
+    try {
+      const doc = await addAccountBook(addAccountingBookInput);
+      const setAccountBookRuleInput = {
+        accountingBookId: doc.id,
+        bookOwnerUid: user?.uid,
+        bookMember: [
+          {
+            uid: user?.uid,
+            role: "owner",
+            sharePermission: true,
+          },
+        ],
+      };
+      await setAccountBookRule(doc.id, setAccountBookRuleInput);
+      setChildComfirmDialog({
+        comfirmIsOpen: true,
+        title: "",
+        content: <p className="text-lg">新增成功</p>,
+        confirmBtnHandler: () => {
+          setChildComfirmDialog((prev) => ({ ...prev, comfirmIsOpen: false }));
+          setParentComfirmDialog((prev) => ({ ...prev, comfirmIsOpen: false }));
+          setDialogType("none");
+          setAddBookFormInput({
+            addBookName: "",
+            addBookDescription: "",
+            addBookUsername: "",
+          });
+          accountBookInputRef.current = {
+            addBookName: "",
+            addBookDescription: "",
+            addBookUsername: "",
+          };
+        },
+      });
+    } catch (error) {
+      console.log("addBookClickHandler", error);
+      setAlertDialog((prev) => ({
+        ...prev,
+        alertIsOpen: true,
+        content: <p className="text-lg">似乎出了一點錯誤，請稍候再試一次</p>,
+      }));
+    }
+  }, [user?.uid, usingUserName]);
+
+  const shareEmailCheck = useCallback(async () => {
+    const userEmail = user?.email;
+    try {
+      const searchOtherUserId = await userSearchAndValidate(
+        "share",
+        userEmail,
+        shareEmailInput
+      );
+      if (searchOtherUserId.ok === false) {
+        setAlertDialog((prev) => ({
+          ...prev,
+          alertIsOpen: true,
+          content: <p className="text-lg">{searchOtherUserId.message}</p>,
+        }));
         return;
       } else {
-        return otherUserData.id;
+        return searchOtherUserId.id;
       }
+    } catch (error) {
+      console.log("shareEmailCheck", error);
+      setAlertDialog((prev) => ({
+        ...prev,
+        alertIsOpen: true,
+        content: <p className="text-lg">似乎出了一點錯誤，請稍候再試一次</p>,
+      }));
     }
   }, [user?.email, shareEmailInput]);
 
   const shareBtnClickHandler = useCallback(async () => {
-    const otherUserId = await shareEmailCheck();
-    const id = user?.uid;
-    if (otherUserId && id && activeShareBook?.id) {
-      const addInvitesResult = await addAccountBookInvites(
-        id,
-        otherUserId,
-        activeShareBook?.id,
-        activeShareBook?.bookName
-      );
-      const updareRuleResult = await updateAccountBookRuleAddBookMember(
-        activeShareBook?.id,
-        {
-          uid: otherUserId,
-          role: "editor",
-          sharePermission: false,
-        }
-      );
-      if (addInvitesResult && updareRuleResult) {
-        setShareDialogIsOpen(false);
-        setAlertMessageContent(<p className="text-lg">邀請成功</p>);
-        setAlertMessageIsOpen(true);
-      } else {
-        setAlertMessageContent(
-          <p className="text-lg">出了一點問題，邀請失敗，請稍後再試</p>
+    try {
+      const otherUserId = await shareEmailCheck();
+      const id = user?.uid;
+      if (otherUserId && id && activeShareBook?.id) {
+        const addInvitesResult = await addAccountBookInvites(
+          id,
+          otherUserId,
+          activeShareBook?.id,
+          activeShareBook?.bookName
         );
-        setAlertMessageIsOpen(true);
+        const updareRuleResult = await updateAccountBookRuleAddBookMember(
+          activeShareBook?.id,
+          {
+            uid: otherUserId,
+            role: "editor",
+            sharePermission: false,
+          }
+        );
+        if (addInvitesResult && updareRuleResult) {
+          setShareDialogIsOpen(false);
+          setAlertDialog((prev) => ({
+            ...prev,
+            alertIsOpen: true,
+            content: <p className="text-lg">邀請成功</p>,
+          }));
+        } else {
+          setAlertDialog((prev) => ({
+            ...prev,
+            alertIsOpen: true,
+            content: (
+              <p className="text-lg">出了一點問題，邀請失敗，請稍後再試</p>
+            ),
+          }));
+        }
       }
+    } catch (error) {
+      console.log("shareBtnClickHandler", error);
+      setAlertDialog((prev) => ({
+        ...prev,
+        alertIsOpen: true,
+        content: <p className="text-lg">出了一點問題，邀請失敗，請稍後再試</p>,
+      }));
     }
   }, [activeShareBook, user?.uid, shareEmailCheck]);
 
-  const removeEamilCheckAndGetUid = useCallback(async () => {
+  const removeEamilCheck = useCallback(async () => {
     const userEmail = user?.email;
-    if (!removeEmailInput || userEmail === removeEmailInput) {
-      setAlertMessageContent(
-        <p className="text-lg">請輸入要解除共用的email</p>
+    try {
+      const searchOtherUserId = await userSearchAndValidate(
+        "remove",
+        userEmail,
+        removeEmailInput
       );
-      setAlertMessageIsOpen(true);
-      return;
-    }
-    const check = emailCheck(removeEmailInput);
-    if (!check) {
-      setAlertMessageContent(<p className="text-lg">email格式錯誤</p>);
-      setAlertMessageIsOpen(true);
-      return;
-    } else {
-      const otherUserData = await getUserDataByEmail(removeEmailInput);
-      if (!otherUserData) {
-        setAlertMessageContent(
-          <p className="text-lg">使用者email有誤，查無資料</p>
-        );
-        setAlertMessageIsOpen(true);
+      if (searchOtherUserId.ok === false) {
+        setAlertDialog((prev) => ({
+          ...prev,
+          alertIsOpen: true,
+          content: <p className="text-lg">{searchOtherUserId.message}</p>,
+        }));
         return;
       } else {
-        return otherUserData;
+        return searchOtherUserId.id;
       }
+    } catch (error) {
+      console.log("removeEamilCheck", error);
+      setAlertDialog((prev) => ({
+        ...prev,
+        alertIsOpen: true,
+        content: <p className="text-lg">似乎出了一點錯誤，請稍候再試一次</p>,
+      }));
     }
   }, [removeEmailInput, user?.email]);
 
@@ -218,146 +442,195 @@ export default function AccountingBook() {
     ) => {
       const uid = user?.uid;
       if (!uid) return;
-      const invitesDataArr = await getAccountBookInvites(
-        accountBookId,
-        uid,
-        delMemberUid
-      );
-      if (invitesDataArr === false || invitesDataArr.length === 0) return;
+      try {
+        const invitesDataArr = await getAccountBookInvites(
+          accountBookId,
+          uid,
+          delMemberUid
+        );
+        if (invitesDataArr === false || invitesDataArr.length === 0) return;
 
-      const rowDelInvitesResults = await Promise.allSettled(
-        invitesDataArr.map(async (invite) => {
-          await delAccountBookInvites(invite.invitesId);
-          return invite;
-        })
-      );
-      const delInvitesResults = rowDelInvitesResults.reduce(
-        (acc, result) => {
-          if (result.status === "fulfilled") {
-            acc.success.push(result.value);
-          } else {
-            acc.failure.push(result.reason);
+        const rowDelInvitesResults = await Promise.allSettled(
+          invitesDataArr.map(async (invite) => {
+            await delAccountBookInvites(invite.invitesId);
+            return invite;
+          })
+        );
+        const delInvitesResults = rowDelInvitesResults.reduce(
+          (acc, result) => {
+            if (result.status === "fulfilled") {
+              acc.success.push(result.value);
+            } else {
+              acc.failure.push(result.reason);
+            }
+            return acc;
+          },
+          {
+            success: [] as accountBookInvitesType[],
+            failure: [] as { invitesId: string; error: Error }[],
           }
-          return acc;
-        },
-        {
-          success: [] as accountBookInvitesType[],
-          failure: [] as { invitesId: string; error: Error }[],
+        );
+
+        const ruleRemoveMemberResult = await updateAccountBookRuleRemoveMember(
+          accountBookId,
+          delMemberUid
+        );
+        const addRemovalResult = await addAccountBookRemoval(
+          uid,
+          delMemberUid,
+          accountBookId,
+          accountBookName
+        );
+
+        if (
+          delInvitesResults["success"].length === invitesDataArr.length &&
+          ruleRemoveMemberResult &&
+          addRemovalResult
+        ) {
+          setChildComfirmDialog({
+            comfirmIsOpen: true,
+            title: "",
+            content: <p className="text-lg">已成功將共用者移除</p>,
+            confirmBtnHandler: () => {
+              setParentComfirmDialog((prev) => ({
+                ...prev,
+                comfirmIsOpen: false,
+              }));
+              setChildComfirmDialog((prev) => ({
+                ...prev,
+                comfirmIsOpen: false,
+              }));
+              setDialogType("none");
+            },
+          });
+          setShareDialogIsOpen(false);
+          return;
+        } else {
+          setAlertDialog((prev) => ({
+            ...prev,
+            alertIsOpen: true,
+            content: <p className="text-lg">出了一點小錯誤</p>,
+          }));
+          return;
         }
-      );
-
-      const ruleRemoveMemberResult = await updateAccountBookRuleRemoveMember(
-        accountBookId,
-        delMemberUid
-      );
-      const addRemovalResult = await addAccountBookRemoval(
-        uid,
-        delMemberUid,
-        accountBookId,
-        accountBookName
-      );
-
-      if (
-        delInvitesResults["success"].length === invitesDataArr.length &&
-        ruleRemoveMemberResult &&
-        addRemovalResult
-      ) {
-        setAlertMessageContent(<p className="text-lg">已成功將共用者移除</p>);
-        setShareDialogIsOpen(false);
-        setAlertMessageIsOpen(true);
-        return;
-      } else {
-        setAlertMessageContent(<p className="text-lg">出了一點小錯誤</p>);
-        setAlertMessageIsOpen(true);
-        return;
+      } catch (error) {
+        console.log("confirmTodelBtnClickHandler", error);
+        setAlertDialog((prev) => ({
+          ...prev,
+          alertIsOpen: true,
+          content: <p className="text-lg">出了一點小錯誤</p>,
+        }));
       }
     },
     [user?.uid]
   );
 
   const removeBtnClickHandler = useCallback(async () => {
-    const otherUserData = await removeEamilCheckAndGetUid();
-    if (!otherUserData || !activeShareBook) return;
+    const otherUserId = await removeEamilCheck();
+    if (!otherUserId || !activeShareBook) return;
     const bookRule: AccountBookRuleType | false = await getAccountBookRule(
       activeShareBook.id
     );
     if (bookRule === false) return;
     const isUserExist = bookRule.bookMember.find(
-      (member) => member.uid === otherUserData.id
+      (member) => member.uid === otherUserId
     );
     if (!isUserExist) {
-      setAlertMessageContent(
-        <p className="text-lg">該使用者並未共用此本帳簿</p>
-      );
-      setAlertMessageIsOpen(true);
-    } else {
-      setAlertMessageContent(
-        <div>
-          <p className="mb-6 text-lg">
-            是否確認將
-            {activeShareBook.displayNames?.[otherUserData.id]
-              ? activeShareBook.displayNames?.[otherUserData.id]
-              : otherUserData.id}{" "}
-            從 {activeShareBook.bookName} 當中移除?
-          </p>
-          <div className="flex justify-around">
-            <button
-              type="button"
-              className="block w-1/3 border py-2 px-3 rounded-xl cursor-pointer hover:bg-primary hover:text-white hover:font-bold"
-              onClick={() => setAlertMessageIsOpen(false)}
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              className="block w-1/3 bg-secondary py-2 px-3 rounded-xl text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary"
-              onClick={() =>
-                confirmTodelBtnClickHandler(
-                  activeShareBook.id,
-                  activeShareBook.bookName,
-                  otherUserData.id
-                )
-              }
-            >
-              確認
-            </button>
-          </div>
-        </div>
-      );
-      setAlertMessageIsOpen(true);
-    }
-  }, [activeShareBook, removeEamilCheckAndGetUid, confirmTodelBtnClickHandler]);
-
-  async function editDialogClickHandler() {
-    if (!accountBookThisName) {
-      setAlertMessageContent(
-        <p className="text-lg">尚未輸入帳簿中要使用的稱呼</p>
-      );
-      setAlertMessageIsOpen(true);
+      setAlertDialog((prev) => ({
+        ...prev,
+        alertIsOpen: true,
+        content: <p className="text-lg">該使用者並未共用此本帳簿</p>,
+      }));
       return;
+    } else {
+      setOtherUserId(otherUserId);
+      setDialogType("remove");
+      setParentComfirmDialog({
+        comfirmIsOpen: true,
+        title: "解除共用確認",
+        confirmBtnHandler: () =>
+          confirmTodelBtnClickHandler(
+            activeShareBook.id,
+            activeShareBook.bookName,
+            otherUserId
+          ),
+      });
     }
-    if (user?.uid && activeEditBook?.id) {
-      const updateAccountBookDisplayNameResult =
-        await updateAccountBookDisplayName(
-          activeEditBook?.id,
-          user?.uid,
-          accountBookThisName ?? ""
-        );
+  }, [activeShareBook, removeEamilCheck, confirmTodelBtnClickHandler]);
 
-      if (updateAccountBookDisplayNameResult) {
-        setAlertMessageContent(
-          <p className="text-lg">已成功設定帳簿內的顯示名稱</p>
-        );
-        setAlertMessageIsOpen(true);
-        setSettingThisNameIsOpen(false);
-      } else {
-        setAlertMessageContent(
-          <p className="text-lg">已似乎出了一點錯誤，請稍候再試一次</p>
-        );
-        setAlertMessageIsOpen(true);
+  const editDialogClickHandler = useCallback(
+    async (book: AccountingBookType) => {
+      const thisName = accountBookThisNameRef.current;
+      if (!thisName) {
+        setAlertDialog((prev) => ({
+          ...prev,
+          alertIsOpen: true,
+          content: <p className="text-lg">尚未輸入帳簿中要使用的稱呼</p>,
+        }));
+        return;
       }
-    }
-  }
+      try {
+        if (user?.uid && book?.id) {
+          const updateAccountBookDisplayNameResult =
+            await updateAccountBookDisplayName(
+              book?.id,
+              user?.uid,
+              thisName ?? ""
+            );
+
+          if (updateAccountBookDisplayNameResult) {
+            setChildComfirmDialog({
+              comfirmIsOpen: true,
+              title: "",
+              content: <p className="text-lg">已成功設定帳簿內的顯示名稱</p>,
+              confirmBtnHandler: () => {
+                setParentComfirmDialog((prev) => ({
+                  ...prev,
+                  comfirmIsOpen: false,
+                }));
+                setChildComfirmDialog((prev) => ({
+                  ...prev,
+                  comfirmIsOpen: false,
+                }));
+                setDialogType("none");
+              },
+            });
+            accountBookThisNameRef.current = undefined;
+          } else {
+            setAlertDialog((prev) => ({
+              ...prev,
+              alertIsOpen: true,
+              content: (
+                <p className="text-lg">似乎出了一點錯誤，請稍候再試一次</p>
+              ),
+            }));
+          }
+        }
+      } catch (error) {
+        console.log("editDialogClickHandler", error);
+        setAlertDialog((prev) => ({
+          ...prev,
+          alertIsOpen: true,
+          content: <p className="text-lg">似乎出了一點錯誤，請稍候再試一次</p>,
+        }));
+      }
+    },
+    [user?.uid, accountBookThisNameRef]
+  );
+
+  const editBookBtnClickHandler = useCallback(
+    (book: AccountingBookType) => {
+      setActiveEditBook(book);
+      setDialogType("edit");
+      setParentComfirmDialog({
+        comfirmIsOpen: true,
+        title: "編輯帳簿",
+        confirmBtnHandler: () => editDialogClickHandler(book),
+      });
+    },
+    [editDialogClickHandler]
+  );
+
   async function acceptInvitationClickHandler(
     event: React.MouseEvent<HTMLButtonElement>
   ) {
@@ -372,93 +645,88 @@ export default function AccountingBook() {
       );
 
       if (setUserAbleAccountBookResult) {
-        setAlertMessageContent(<p className="text-lg">已接受邀請</p>);
-        setAlertMessageIsOpen(true);
-        setSettingThisNameIsOpen(true);
+        setAlertDialog((prev) => ({
+          ...prev,
+          alertIsOpen: true,
+          content: <p className="text-lg">已接受邀請</p>,
+        }));
+        setDialogType("accepted");
+        setParentComfirmDialog({
+          comfirmIsOpen: true,
+          title: "設定帳簿中使用名稱",
+          confirmBtnHandler: () => thisNameClickHandler(accountingBookId),
+        });
       } else {
-        setAlertMessageContent(
-          <p className="text-lg">已似乎出了一點錯誤，請稍候再試一次</p>
-        );
-        setAlertMessageIsOpen(true);
-      }
-    }
-  }
-  async function thisNameClickHandler() {
-    if (!accountBookThisName) {
-      setAlertMessageContent(
-        <p className="text-lg">尚未輸入帳簿中要使用的稱呼</p>
-      );
-      setAlertMessageIsOpen(true);
-      return;
-    }
-    if (activeInvites?.invitesId && user?.uid) {
-      const updateAccountBookDisplayNameResult =
-        await updateAccountBookDisplayName(
-          activeInvites.accountingBookId,
-          user?.uid,
-          accountBookThisName ?? ""
-        );
-
-      if (updateAccountBookDisplayNameResult) {
-        setAlertMessageContent(
-          <p className="text-lg">已成功設定帳簿內的顯示名稱~</p>
-        );
-        setSettingThisNameIsOpen(false);
-        setAlertMessageIsOpen(true);
-      } else {
-        setAlertMessageContent(
-          <p className="text-lg">已似乎出了一點錯誤，請稍候再試一次</p>
-        );
-        setAlertMessageIsOpen(true);
+        setAlertDialog((prev) => ({
+          ...prev,
+          alertIsOpen: true,
+          content: <p className="text-lg">似乎出了一點錯誤，請稍候再試一次</p>,
+        }));
       }
     }
   }
 
-  async function addBookClickHandler() {
-    if (!addBookNameInput || !user?.uid) {
-      setAlertMessageContent(<p className="text-lg">資料未填寫完整</p>);
-      setAlertMessageIsOpen(true);
+  async function thisNameClickHandler(accountingBookId: string) {
+    const thisName = accountBookThisNameRef.current;
+    if (!thisName) {
+      setAlertDialog((prev) => ({
+        ...prev,
+        alertIsOpen: true,
+        content: <p className="text-lg">尚未輸入帳簿中要使用的稱呼</p>,
+      }));
       return;
     }
-    const addAccountingBookInput = {
-      bookName: addBookNameInput,
-      bookDescription: addBookDescriptionInput ?? "",
-      bookOwnerUid: user?.uid,
-      displayNames: {
-        [user?.uid]: addBookUsernameInput
-          ? addBookUsernameInput
-          : usingUserName
-          ? usingUserName
-          : "",
-      },
-    };
-    const doc = await addAccountBook(addAccountingBookInput);
-    const setAccountBookRuleInput = {
-      accountingBookId: doc.id,
-      bookOwnerUid: user?.uid,
-      bookMember: [
-        {
-          uid: user?.uid,
-          role: "owner",
-          sharePermission: true,
-        },
-      ],
-    };
-    setAccountBookRule(doc.id, setAccountBookRuleInput);
-    setAddBookOpen(false);
-    setAlertMessageContent(<p className="text-lg">新增成功</p>);
-    setAlertMessageIsOpen(true);
+    try {
+      if (accountingBookId && user?.uid) {
+        const updateAccountBookDisplayNameResult =
+          await updateAccountBookDisplayName(
+            accountingBookId,
+            user?.uid,
+            thisName ?? ""
+          );
+        if (updateAccountBookDisplayNameResult) {
+          setChildComfirmDialog({
+            comfirmIsOpen: true,
+            title: "",
+            content: <p className="text-lg">已成功設定帳簿內的顯示名稱~</p>,
+            confirmBtnHandler: () => {
+              setParentComfirmDialog((prev) => ({
+                ...prev,
+                comfirmIsOpen: false,
+              }));
+              setChildComfirmDialog((prev) => ({
+                ...prev,
+                comfirmIsOpen: false,
+              }));
+            },
+          });
+          accountBookThisNameRef.current = undefined;
+          setDialogType("none");
+        } else {
+          setAlertDialog((prev) => ({
+            ...prev,
+            alertIsOpen: true,
+            content: (
+              <p className="text-lg">似乎出了一點錯誤，請稍候再試一次</p>
+            ),
+          }));
+        }
+      }
+    } catch (error) {
+      console.log("thisNameClickHandler", error);
+      setAlertDialog((prev) => ({
+        ...prev,
+        alertIsOpen: true,
+        content: <p className="text-lg">似乎出了一點錯誤，請稍候再試一次</p>,
+      }));
+    }
   }
 
-  // 一般：重新render重新建立
-  // useCallback:只有依賴變更才會重新建立
-  // 用於function當props傳遞、或放在useEffect的依賴中使用
   const autoRemoveSharedBook = useCallback(
     async function () {
       const uid = user?.uid;
       if (!uid) return;
       if (removalDate.length === 0) return;
-      // 自動監聽remove
       try {
         const results = await Promise.allSettled(
           removalDate.map(async (removal) => {
@@ -485,27 +753,32 @@ export default function AccountingBook() {
         const success = results.filter(
           (result) => result.status === "fulfilled"
         );
-        // 需要修正，只有被刪除的顯示而非全部刪除才顯示
         if (results.length === success.length) {
-          setAlertMessageContent(
-            <div>
-              <p>
-                因為
-                <span className="font-bold">帳簿被刪除</span>
-                或是<span className="font-bold">帳簿擁有者移除了您的權限</span>
-                ，以下帳簿已從您的可讀取帳簿中移除
-              </p>
-              <ul className="py-3">
-                {removalDate.map((removal) => (
-                  <li key={removal.removeId} className="mb-3">
-                    <span className="font-bold">帳簿名稱：</span>
-                    {removal.accountingBookName}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-          setAlertMessageIsOpen(true);
+          setAlertDialog((prev) => ({
+            ...prev,
+            alertIsOpen: true,
+            content: (
+              <div>
+                <p>
+                  因為
+                  <span className="font-bold">帳簿被刪除</span>
+                  或是
+                  <span className="font-bold">帳簿擁有者移除了您的權限</span>
+                  ，以下帳簿已從您的可讀取帳簿中移除
+                </p>
+                <ul className="py-3">
+                  {removalDate.map((removal) => {
+                    return (
+                      <li key={removal.removeId} className="mb-3">
+                        <span className="font-bold">帳簿名稱：</span>
+                        {removal.accountingBookName}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ),
+          }));
         }
       } catch (error) {
         console.log("autoRemoveSharedBook", error);
@@ -517,71 +790,54 @@ export default function AccountingBook() {
   const comfirmDelAccountBook = useCallback(async () => {
     if (!selectedAccountingBook || !user?.uid) return;
 
-    // 移除所有共用者權限
     const removerAllMemberResult = await delAllAccountBookInvitesAndAddRemoveal(
       selectedAccountingBook.id,
+      selectedAccountingBook.bookName,
       user.uid
     );
-
-    // 刪除所有帳簿record
     const delAllRecord = await delAllAccountingRecord(
       selectedAccountingBook.id
     );
-
-    // 刪除帳簿規則
     const delAccountBookRuleResult = await delAccountBookRule(
       selectedAccountingBook.id
     );
-
-    // 刪除帳簿
     const delAccountingBookResult = await delAllAccountBook(
       selectedAccountingBook.id
     );
 
-    // 移除後要處理取消監聽這個帳簿
     if (
       removerAllMemberResult &&
       delAllRecord &&
       delAccountBookRuleResult &&
       delAccountingBookResult
     ) {
-      setAlertMessageIsOpen(false);
-      setAlertMessageContent(<p className="text-lg">刪除成功</p>);
-      setAlertMessageIsOpen(true);
+      setChildComfirmDialog({
+        comfirmIsOpen: true,
+        title: "",
+        content: <p className="text-lg">刪除成功</p>,
+        confirmBtnHandler: () => {
+          setParentComfirmDialog((prev) => ({ ...prev, comfirmIsOpen: false }));
+          setChildComfirmDialog((prev) => ({ ...prev, comfirmIsOpen: false }));
+          setDialogType("none");
+        },
+      });
     } else {
-      setAlertMessageIsOpen(false);
-      setAlertMessageContent(<p className="text-lg">出了一點錯誤請稍後再試</p>);
-      setAlertMessageIsOpen(true);
+      setAlertDialog((prev) => ({
+        ...prev,
+        alertIsOpen: true,
+        content: <p className="text-lg">出了一點錯誤請稍後再試</p>,
+      }));
     }
   }, [selectedAccountingBook, user?.uid]);
 
   const clickDelAccountBookHandler = useCallback(async () => {
-    setAlertMessageContent(
-      <div>
-        <p className="mb-6 text-lg">
-          是否確認刪除
-          <span className="font-bold">{selectedAccountingBook?.bookName}</span>?
-        </p>
-        <div className="flex justify-around">
-          <button
-            type="button"
-            className="block border py-2 px-3 rounded-xl cursor-pointer hover:bg-primary hover:text-white hover:font-bold"
-            onClick={() => setAlertMessageIsOpen(false)}
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            className="block bg-secondary py-2 px-3 rounded-xl text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary"
-            onClick={() => comfirmDelAccountBook()}
-          >
-            確認
-          </button>
-        </div>
-      </div>
-    );
-    setAlertMessageIsOpen(true);
-  }, [comfirmDelAccountBook, selectedAccountingBook]);
+    setDialogType("delete");
+    setParentComfirmDialog({
+      comfirmIsOpen: true,
+      title: "刪除帳簿",
+      confirmBtnHandler: comfirmDelAccountBook,
+    });
+  }, [comfirmDelAccountBook]);
 
   //---function---
 
@@ -593,148 +849,22 @@ export default function AccountingBook() {
           ? activeEditBook?.displayNames?.[user?.uid]
           : name
       );
+      accountBookThisNameRef.current = activeEditBook?.displayNames?.[user?.uid]
+        ? activeEditBook?.displayNames?.[user?.uid]
+        : name;
     }
   }, [name, user?.uid, activeEditBook]);
 
   useEffect(() => {
     setAccountBookList(
-      <>
-        {allAccountBook.map((book) => {
-          return (
-            <tr key={book.id}>
-              <td
-                scope="row"
-                className="text-center border-b border-primary p-2"
-              >
-                <Menu>
-                  <MenuButton
-                    className="focus-visible:outline-none focus-visible:ring-0 cursor-pointer hover:outline"
-                    data-accountingbookid={book.id}
-                    onClick={() => setSelectedAccountingBook(book)}
-                  >
-                    <i className="bi bi-three-dots-vertical"></i>
-                  </MenuButton>
-                  <MenuItems
-                    transition
-                    anchor={{ to: "top", offset: 24 }}
-                    className="origin-top transition duration-200 ease-out data-closed:scale-95 data-closed:opacity-0 bg-white focus-visible:outline-none focus-visible:ring-0"
-                  >
-                    <MenuItem
-                      as="div"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    >
-                      <button
-                        className={`block px-3 py-2 ${
-                          user?.uid !== book.bookOwnerUid
-                            ? "text-gray-300 cursor-not-allowed"
-                            : "cursor-pointer hover:bg-primary hover:font-bold hover:text-white"
-                        }`}
-                        disabled={user?.uid !== book.bookOwnerUid}
-                        onClick={clickDelAccountBookHandler}
-                      >
-                        刪除帳簿
-                      </button>
-                    </MenuItem>
-                  </MenuItems>
-                </Menu>
-              </td>
-              <td
-                scope="row"
-                className="text-center border-b border-primary p-2"
-              >
-                {book.bookName}
-              </td>
-              {user?.uid === book.bookOwnerUid ? (
-                <>
-                  <td className="border-b border-primary p-2 text-center">
-                    <div className="flex justify-center">
-                      <button
-                        className="flex justify-center w-full p-2 cursor-pointer text-center"
-                        onClick={() => {
-                          setActiveShareBook(book);
-                          setShareDialogIsOpen(true);
-                        }}
-                      >
-                        <i className="bi bi-person-plus-fill text-2xl text-secondary hover:text-black focus:text-black"></i>
-                      </button>
-                    </div>
-                  </td>
-                  <td className="border-b border-primary p-2 text-center">
-                    <div className="flex justify-center">
-                      <button
-                        className="flex justify-center w-full p-2 cursor-pointer text-center"
-                        onClick={() => {
-                          setActiveEditBook(book);
-                          setEditDialogIsOpen(true);
-                        }}
-                      >
-                        <i className="bi bi-pencil-fill text-2xl text-secondary hover:text-black focus:text-black"></i>
-                      </button>
-                    </div>
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td className="border-b border-primary p-2 text-center">
-                    <div className="flex justify-center">
-                      <button
-                        className="flex justify-center w-full p-2 text-center"
-                        disabled
-                      >
-                        <i className="bi bi-x-circle text-2xl text-secondary"></i>
-                      </button>
-                    </div>
-                  </td>
-                  <td className="border-b border-primary p-2 text-center">
-                    <div className="flex justify-center">
-                      <button
-                        className="flex justify-center w-full p-2 cursor-pointer text-center"
-                        onClick={() => {
-                          setActiveEditBook(book);
-                          setEditDialogIsOpen(true);
-                        }}
-                      >
-                        <i className="bi bi-pencil-fill text-2xl text-secondary hover:text-black focus:text-black"></i>
-                      </button>
-                    </div>
-                  </td>
-                </>
-              )}
-              <td
-                scope="row"
-                className="text-center border-b border-primary p-2"
-              >
-                <div className="flex justify-center relative">
-                  <button
-                    className="flex justify-center items-center p-2 bg-secondary text-white rounded-xl md:px-3 md:py-2 cursor-pointer hover:bg-primary hover:text-black"
-                    onClick={() => {
-                      setSelectedAccountingBook(book);
-                      setRedirectLoading("block");
-                      router.push("/record");
-                    }}
-                  >
-                    <span className="hidden md:inline-block">記帳</span>
-
-                    <i className="bi bi-arrow-right-circle-fill text-2xl md:ms-2"></i>
-                  </button>
-                  <div
-                    className={`${
-                      selectedAccountingBook?.id === book.id
-                        ? redirectLoading
-                        : "hidden"
-                    } absolute right-0 top-1/3`}
-                  >
-                    <div className="animate-spin w-4 h-4 border-t-2 border-s-2 border-b-2 rounded-xl"></div>
-                  </div>
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </>
+      <AccountingBookList
+        setActiveShareBook={setActiveShareBook}
+        setShareDialogIsOpen={setShareDialogIsOpen}
+        clickDelAccountBookHandler={clickDelAccountBookHandler}
+        editBookBtnClickHandler={editBookBtnClickHandler}
+        redirectLoading={redirectLoading}
+        setRedirectLoading={setRedirectLoading}
+      ></AccountingBookList>
     );
   }, [
     allAccountBook,
@@ -744,6 +874,7 @@ export default function AccountingBook() {
     selectedAccountingBook?.id,
     redirectLoading,
     clickDelAccountBookHandler,
+    editBookBtnClickHandler,
   ]);
   useEffect(() => {
     if (removalDate.length === 0) return;
@@ -753,235 +884,40 @@ export default function AccountingBook() {
     setUsingUserName(name);
   }, [name]);
 
-  useEffect(() => {
-    if (!shareDialogIsOpen) {
-      setTabIndex(0);
-    }
-  }, [shareDialogIsOpen]);
   //---useEffect---
 
   //---template---
-  const editDialogContent = useMemo(() => {
-    return (
-      <>
-        <ul>
-          <li className="mb-3">
-            <span className="block font-bold mb-2">帳簿名稱：</span>
-            <p>{activeEditBook?.bookName}</p>
-          </li>
-          <li>
-            <span className="block font-bold mb-2">在帳簿中使用的稱呼：</span>
-            <input
-              type="text"
-              name="accountBookThisName"
-              id="accountBookThisName"
-              placeholder="在帳簿中會以此暱稱顯示記帳資料"
-              className="block border border-primary p-2 rounded-xl w-full"
-              value={accountBookThisName}
-              onChange={(e) => setAccountBookThisName(e.target.value)}
-            />
-          </li>
-        </ul>
-      </>
-    );
-  }, [activeEditBook, accountBookThisName]);
 
   const shareDialogContent = useMemo(() => {
     return (
-      <>
-        <h2 className="mb-4 text-lg">帳簿名稱：{activeShareBook?.bookName}</h2>
-        <div>
-          <TabGroup className="" onChange={(index) => setTabIndex(index)}>
-            <TabList className="">
-              <Tab
-                className={`w-1/2 p-2 border-primary ${
-                  tabInex === 0
-                    ? "border-t border-x rounded-tl-xl rounded-tr-xl"
-                    : "border-b"
-                }`}
-              >
-                邀請共用
-              </Tab>
-              <Tab
-                className={`w-1/2 p-2 border-primary ${
-                  tabInex === 1
-                    ? "border-t border-x rounded-tl-xl rounded-tr-xl"
-                    : "border-b"
-                }`}
-              >
-                解除共用
-              </Tab>
-            </TabList>
-            <TabPanels className="p-3 border border-primary rounded-br-xl rounded-bl-xl border-t-0">
-              <TabPanel>
-                <div className="mb-4">
-                  <label
-                    htmlFor="shareToOtherUser"
-                    className="flex items-center mb-2"
-                  >
-                    與其他使用者共用帳簿
-                  </label>
-                  <div className="flex">
-                    <input
-                      type="text"
-                      name="shareToOtherUser"
-                      id="shareToOtherUser"
-                      placeholder="其他使用者的email"
-                      onChange={(e) => setShareEmailInput(e.target.value)}
-                      className="block border border-primary rounded-xl p-2 grow"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-center">
-                  <button
-                    className="block bg-secondary text-white rounded-xl py-2 px-3 w-full cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary"
-                    onClick={shareBtnClickHandler}
-                  >
-                    加入共用
-                  </button>
-                </div>
-              </TabPanel>
-              <TabPanel>
-                <div className="mb-4">
-                  <label
-                    htmlFor="shareToOtherUser"
-                    className="flex items-center mb-2"
-                  >
-                    移除帳簿中的共用者
-                  </label>
-                  <input
-                    type="text"
-                    name="shareToOtherUser"
-                    id="shareToOtherUser"
-                    placeholder="其他使用者的email"
-                    onChange={(e) => setRemoveEmailInput(e.target.value)}
-                    className="block border border-primary rounded-xl w-full p-2"
-                  />
-                </div>
-                <div className="flex justify-center">
-                  <button
-                    className="block bg-secondary text-white rounded-xl py-2 px-3 w-full cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary"
-                    onClick={removeBtnClickHandler}
-                  >
-                    解除共用
-                  </button>
-                </div>
-              </TabPanel>
-            </TabPanels>
-          </TabGroup>
-        </div>
-      </>
+      <ShareOrRemoveInputForm
+        bookName={activeShareBook?.bookName ? activeShareBook?.bookName : ""}
+        shareEmailInput={shareEmailInput}
+        setShareEmailInput={setShareEmailInput}
+        shareBtnClickHandler={shareBtnClickHandler}
+        removeEmailInput={removeEmailInput}
+        setRemoveEmailInput={setRemoveEmailInput}
+        removeBtnClickHandler={removeBtnClickHandler}
+      ></ShareOrRemoveInputForm>
     );
-  }, [activeShareBook, removeBtnClickHandler, shareBtnClickHandler, tabInex]);
+  }, [
+    activeShareBook,
+    shareEmailInput,
+    shareBtnClickHandler,
+    removeEmailInput,
+    removeBtnClickHandler,
+  ]);
 
-  const shareBookInfoContent = (
-    <>
-      <ul className="py-3">
-        <li>
-          <span className="font-bold">帳簿名稱：</span>
-          {activeInvites?.accountingBookName}
-        </li>
-        <li>
-          <span className="font-bold">邀請人UID：</span>
-          {activeInvites?.fromUid}
-        </li>
-      </ul>
-    </>
-  );
-
-  const settingThisNameContent = (
-    <>
-      <ul className="mb-4">
-        <li>
-          <span className="block font-bold mb-2">在帳簿中使用的稱呼：</span>
-          <input
-            type="text"
-            name="accountBookThisName"
-            id="accountBookThisName"
-            placeholder="在帳簿中會以此暱稱顯示記帳資料"
-            className="block border border-primary p-2 rounded-xl w-full"
-            value={accountBookThisName}
-            onChange={(e) => setAccountBookThisName(e.target.value)}
-          />
-        </li>
-      </ul>
-      {/* <p className="text-secondary">
-        提示：接受之後，此本帳簿會加入您的帳簿列表，您可以與其他人一起在這本帳簿記帳
-      </p> */}
-    </>
-  );
-
-  const addBookContent = (
-    <div>
-      <div className="mb-4">
-        <label htmlFor="addBookName" className="block mb-2">
-          新帳簿名稱
-        </label>
-        <input
-          type="text"
-          name="addBookName"
-          id="addBookName"
-          className="block border border-primary rounded-xl p-3 w-full"
-          value={addBookNameInput}
-          onChange={(e) => setAddBookNameInput(e.target.value)}
-        />
-      </div>
-      <div className="mb-4">
-        <label htmlFor="addBookUsername" className="block mb-2">
-          在新帳簿內使用的暱稱
-        </label>
-        <input
-          type="text"
-          name="addBookUsername"
-          id="addBookUsername"
-          className="block border border-primary rounded-xl p-3 w-full"
-          value={addBookUsernameInput}
-          onChange={(e) => setAddBookUsernameInput(e.target.value)}
-        />
-      </div>
-      <div className="mb-4">
-        <label htmlFor="addBookDescription" className="block mb-2">
-          新帳簿描述
-        </label>
-        <textarea
-          name="addBookDescription"
-          id="addBookDescription"
-          className="border border-primary rounded-xl w-full p-2"
-          rows={5}
-          value={addBookDescriptionInput}
-          onChange={(e) => setAddBookDescription(e.target.value)}
-        ></textarea>
-      </div>
-      <div className="flex justify-end">
-        <button
-          onClick={() => setAddBookOpen(false)}
-          className="block border py-3 px-5 rounded-xl me-3 cursor-pointer hover:bg-primary hover:text-white hover:font-bold"
-        >
-          取消
-        </button>
-        <button
-          className="block border py-3 px-5 rounded-xl bg-secondary text-white cursor-pointer hover:bg-primary hover:text-black hover:font-bold hover:border-primary"
-          onClick={addBookClickHandler}
-        >
-          新增
-        </button>
-      </div>
-    </div>
-  );
-
-  const removeConfirmContent = <></>;
-
-  const removeAllRecordContent = <></>;
   //---template---
 
   return (
-    <main className="flex flex-col items-center p-6 lg:h-[calc(100vh-100px)] mb-25 lg:mb-0 overflow-hidden">
+    <main className="flex flex-col items-center p-6 lg:h-[calc(100vh-100px)] mb-25 lg:mb-0 overflow-hidden text-black">
       <div className="container grow flex flex-col h-full">
         <div className="mb-3">
           <button
             type="button"
-            onClick={() => setAddBookOpen(true)}
-            className="block border border-primary rounded-xl p-3 overflow-hidden min-w-[120px] min-h-[58px] cursor-pointer hover:bg-primary hover:text-bold"
+            onClick={addBookBtnClickHandler}
+            className="block border border-primary rounded-xl p-3 overflow-hidden min-w-[120px] min-h-[58px] cursor-pointer bg-white text-black hover:bg-primary hover:text-bold"
           >
             新增帳簿
           </button>
@@ -1076,7 +1012,18 @@ export default function AccountingBook() {
                         className="p-2 border bg-secondary text-white rounded-xl cursor-pointer"
                         onClick={() => {
                           setActiveInvites(invites);
-                          setShareBookInfoIsOpen(true);
+                          setDialogType("info");
+                          setParentComfirmDialog({
+                            comfirmIsOpen: true,
+                            title: "帳簿資訊",
+                            confirmBtnHandler: () => {
+                              setParentComfirmDialog((prev) => ({
+                                ...prev,
+                                comfirmIsOpen: false,
+                              }));
+                              setDialogType("none");
+                            },
+                          });
                         }}
                       >
                         詳細資訊
@@ -1104,13 +1051,6 @@ export default function AccountingBook() {
           </table>
         </div>
         <MessageModalDialog
-          isOpen={addBookOpen}
-          setIsOpen={setAddBookOpen}
-          title="新增帳簿"
-          content={addBookContent}
-        ></MessageModalDialog>
-        {}
-        <MessageModalDialog
           isOpen={shareDialogIsOpen}
           setIsOpen={setShareDialogIsOpen}
           title="邀請 / 解除共用"
@@ -1120,56 +1060,40 @@ export default function AccountingBook() {
             setActiveShareBook(null);
           }}
         ></MessageModalDialog>
-        <MessageModalDialog
-          isOpen={editDialogIsOpen}
-          setIsOpen={setEditDialogIsOpen}
-          title="編輯帳簿"
-          content={editDialogContent}
-          withConfirmBtn={true}
-          confirmBtnHandler={editDialogClickHandler}
-          onCloseHandler={() => {
-            setEditDialogIsOpen(false);
-            setActiveEditBook(null);
+        <ComfirmDialog
+          comfirmIsOpen={parentComfirmDialog.comfirmIsOpen}
+          title={parentComfirmDialog.title}
+          confirmBtn={parentComfirmDialog.confirmBtn}
+          confirmBtnHandler={parentComfirmDialog.confirmBtnHandler}
+          dialogOnClose={() => {
+            setParentComfirmDialog((prev) => ({
+              ...prev,
+              comfirmIsOpen: false,
+            }));
+            if (dialogType === "edit") {
+              setActiveEditBook(null);
+            }
           }}
-        ></MessageModalDialog>
-        <MessageModalDialog
-          isOpen={shareBookInfoIsOpen}
-          setIsOpen={setShareBookInfoIsOpen}
-          title="帳簿資訊"
-          content={shareBookInfoContent}
-        ></MessageModalDialog>
-        <MessageModalDialog
-          isOpen={removeConfirmIsOpen}
-          setIsOpen={setRemoveConfirmIsOpen}
-          title="移除帳簿共用者"
-          content={removeConfirmContent}
-        ></MessageModalDialog>
-        <MessageModalDialog
-          isOpen={removeAllRecordIsOpen}
-          setIsOpen={setRemoveAllRecordIIsOpen}
-          title="移除記帳紀錄"
-          content={removeAllRecordContent}
-        ></MessageModalDialog>
-        <MessageModalDialog
-          isOpen={settingThisNameIsOpen}
-          setIsOpen={setSettingThisNameIsOpen}
-          title="設定帳簿中使用名稱"
-          content={settingThisNameContent}
-          withConfirmBtn={true}
-          withCancelBtn={true}
-          confirmBtnHandler={thisNameClickHandler}
-        ></MessageModalDialog>
-        <MessageModalDialog
-          isOpen={alertMessageIsOpen}
-          setIsOpen={setAlertMessageIsOpen}
-          title=""
-          content={
-            <div className="min-h-25 flex justify-center items-center">
-              {alertMessageContent}
-            </div>
+        >
+          {getParentDialogContet()}
+        </ComfirmDialog>
+        <ComfirmDialog
+          comfirmIsOpen={childComfirmDialog.comfirmIsOpen}
+          title={childComfirmDialog.title}
+          confirmBtn={childComfirmDialog.confirmBtn}
+          confirmBtnHandler={childComfirmDialog.confirmBtnHandler}
+          dialogOnClose={() =>
+            setChildComfirmDialog((prev) => ({ ...prev, comfirmIsOpen: false }))
           }
-          withConfirmBtn={true}
-        ></MessageModalDialog>
+        >
+          {childComfirmDialog.content}
+        </ComfirmDialog>
+        <AlertMessageDialog
+          dialogProps={alertDialog}
+          dialogOnClose={() =>
+            setAlertDialog((prev) => ({ ...prev, alertIsOpen: false }))
+          }
+        ></AlertMessageDialog>
       </div>
     </main>
   );

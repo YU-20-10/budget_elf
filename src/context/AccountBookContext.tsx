@@ -5,26 +5,30 @@ import { createContext, useState, useEffect, ReactNode, useRef } from "react";
 import {
   getAllAccountBook,
   watchAllAccountBook,
-  getUserAbleAccountBookIdArr,
-  getUserAbleAccountBook,
-  watchUserAbleAccountBook,
   watchSelectedAccountingBook,
-} from "@/lib/firebase/firestore";
+} from "@/lib/firebase/repository/accountingBooksRepository";
 import useAuth from "@/hooks/useAuth";
 import {
   AccountingBookType,
   AccountBookContextType,
   AccountingRecordWithIdType,
 } from "@/types/AccountingBookType";
+import {
+  getUserAbleAccountBookIdArr,
+  getUserAbleAccountBook,
+  watchUserAbleAccountBook,
+} from "@/lib/firebase/repository/userAbleAccountBooksRepository";
 
 export const AccountBookContext = createContext<
   AccountBookContextType | undefined
 >(undefined);
 
 export function AccountBookProvider({ children }: { children: ReactNode }) {
-  // const router = useRouter();
   const { user, loading: authLoading, invitesData } = useAuth();
-  // 帳簿
+
+  const accountBookRef = useRef<AccountingBookType[] | null>(null);
+  const ableAccountBookRef = useRef<AccountingBookType[] | null>(null);
+
   const [ownAccountBook, setOwnAccountBook] = useState<AccountingBookType[]>(
     []
   );
@@ -34,15 +38,13 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
   const [allAccountBook, setAllAccountBook] = useState<AccountingBookType[]>(
     []
   );
-  const accountBookRef = useRef<AccountingBookType[] | null>(null);
-  const ableAccountBookRef = useRef<AccountingBookType[] | null>(null);
   const [selectedAccountingBook, setSelectedAccountingBook] = useState<
     AccountingBookType | undefined
   >(undefined);
-  // 記帳資料
   const [selectedBookRecord, setSelectedBookRecord] = useState<
     AccountingRecordWithIdType[] | undefined
   >(undefined);
+
   useEffect(() => {
     if (!user?.uid || authLoading) return;
 
@@ -52,7 +54,6 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
     if (accountBookRef.current !== null) {
       setOwnAccountBook(accountBookRef.current);
     } else {
-      // 取得一次資料
       (async () => {
         try {
           if (id) {
@@ -66,7 +67,6 @@ export function AccountBookProvider({ children }: { children: ReactNode }) {
       })();
     }
 
-    // 啟動監聽
     if (id) {
       unsubscribe = watchAllAccountBook(id, (books) => {
         accountBookRef.current = books;
